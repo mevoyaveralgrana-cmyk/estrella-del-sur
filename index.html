@@ -167,6 +167,7 @@ function toast(m,malo){ const t=$('toast'); t.textContent=m; t.style.background=
 function fdate(d){ if(!d)return '—'; const p=String(d).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d; }
 function hoy(){ return new Date().toISOString().slice(0,10); }
 function dias(d){ if(!d)return null; return Math.round((new Date(String(d).slice(0,10)+'T12:00')-new Date(hoy()+'T12:00'))/864e5); }
+function edadDe(j){ return (j&&j.edad!=null)?j.edad:edad(j&&j.nac); }
 function edad(f){ if(!f)return '—'; const b=new Date(f),n=new Date(); let a=n.getFullYear()-b.getFullYear(); const m=n.getMonth()-b.getMonth(); if(m<0||(m===0&&n.getDate()<b.getDate()))a--; return a; }
 function val(id){ const e=$(id); return e?String(e.value).trim():''; }
 function chk(id){ const e=$(id); return e?e.checked:false; }
@@ -183,12 +184,13 @@ const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
 const RAMAS=['Masculino','Femenino','Veteranos','Otras'];
 
 /* permisos */
+const esPub =()=>!YO||YO.rol==='publico';
 const esDir =()=>YO&&YO.rol==='dirigente';
 const esDT  =()=>YO&&YO.rol==='dt';
 const esJug =()=>YO&&YO.rol==='jugador';
 const puedeCat=c=>esDir()||(esDT()&&c&&c===YO.cat);
 const miJugador=()=>DB.jugadores.find(j=>j.user_id===YO.user_id);
-const ROL={dirigente:'Dirigente',dt:'Entrenador',jugador:'Jugador'};
+const ROL={dirigente:'Dirigente',dt:'Entrenador',jugador:'Jugador',publico:'Vista pública'};
 
 /* ============ CARGA DE DATOS ============ */
 const pIn =r=>({...r,local:r.eq_local,visitante:r.eq_visita});
@@ -198,12 +200,14 @@ const cIn =r=>({club:r.club,temporada:r.temporada,topeAmarillas:r.tope_amarillas
   ptsVictoria:r.pts_victoria,ptsEmpate:r.pts_empate,token:r.token_alta});
 
 async function cargarTodo(){
+  const pub=esPub();
   const q=t=>SB.from(t).select('*');
   const [cf,ca,eqs,ju,pa,st,sa,ci,pe]=await Promise.all([
-    SB.from('config').select('*').eq('id',1).single(),
+    SB.from(pub?'pub_config':'config').select('*').eq('id',1).single(),
     SB.from('categorias').select('*').order('orden'),
     SB.from('equipos').select('*').order('nombre'),
-    q('jugadores'),q('partidos'),q('stats'),q('sanciones'),q('citaciones'),q('perfiles')]);
+    q(pub?'pub_jugadores':'jugadores'),q('partidos'),q('stats'),q('sanciones'),q('citaciones'),
+    pub?Promise.resolve({data:[],error:null}):q('perfiles')]);
   const err=[cf,ca,eqs,ju,pa,st,sa,ci,pe].find(r=>r.error);
   if(err){ throw new Error(err.error.message); }
   DB.config=cIn(cf.data);
@@ -335,9 +339,16 @@ async function iniciar(){
   SB=window.supabase.createClient(CFG.url,CFG.key);
   if(PARAMS.get('alta')) return vistaAlta(PARAMS.get('alta'));
   const {data}=await SB.auth.getSession();
-  SB.auth.onAuthStateChange((ev)=>{ if(ev==='SIGNED_OUT'){ YO=null; vistaLogin(); } });
+  SB.auth.onAuthStateChange((ev)=>{ if(ev==='SIGNED_OUT'&&YO&&YO.rol!=='publico'){ YO=null; entrarPublico(); } });
   if(data.session) return entrar();
-  vistaLogin();
+  entrarPublico();
+}
+async function entrarPublico(){
+  root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando…</div></div>';
+  YO={rol:'publico',nombre:'Visitante',user_id:null,cat:null};
+  try{ await cargarTodo(); }catch(e){ return vistaLogin('No se pudo conectar: '+e.message); }
+  if(!NAV.find(n=>n.v===V&&n.r.includes('publico'))) V='panel';
+  F.cat=''; pintarShell(); render();
 }
 async function entrar(){
   root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando el club…</div></div>';
@@ -361,6 +372,7 @@ function vistaLogin(msg){
     '<div class="f"><label>Contraseña</label><input id="lgP" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
     '<button onclick="hacerLogin()">Entrar</button>'+
     '<div class="swap">¿Todavía no tenés cuenta? <a onclick="vistaRegistro()">Registrate</a></div>'+
+    '<div class="swap" style="margin-top:9px"><a onclick="entrarPublico()">← Volver a la vista pública</a></div>'+
     '</div></div>';
   $('lgP').onkeydown=e=>{ if(e.key==='Enter')hacerLogin(); };
   $('lgE').focus();
@@ -374,6 +386,7 @@ function vistaRegistro(){
     '<div class="f"><label>Contraseña (mínimo 6)</label><input id="rgP" type="password"></div>'+
     '<button onclick="hacerRegistro()">Crear cuenta</button>'+
     '<div class="swap">¿Ya tenés cuenta? <a onclick="vistaLogin()">Iniciar sesión</a></div>'+
+    '<div class="swap" style="margin-top:9px"><a onclick="entrarPublico()">← Volver a la vista pública</a></div>'+
     '<div class="mut" style="font-size:11.5px;margin-top:14px;text-align:center">Las cuentas nuevas entran como <b>Jugador</b>. Un dirigente te asigna el rol después.</div>'+
     '</div></div>';
 }
@@ -395,7 +408,7 @@ async function hacerRegistro(){
   if(!data.session) return msg('Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.','okm');
   entrar();
 }
-async function salir(){ await SB.auth.signOut(); YO=null; vistaLogin(); }
+async function salir(){ await SB.auth.signOut(); YO=null; entrarPublico(); }
 
 /* ---------- FORMULARIO PÚBLICO DE ALTA ---------- */
 async function vistaAlta(token){
@@ -436,13 +449,13 @@ async function enviarAlta(token,btn){
 }
 /* ============ SHELL ============ */
 const NAV=[
- {v:'panel',      ic:'◈',t:'Panel',                r:['dirigente','dt','jugador']},
- {v:'fixture',    ic:'▦',t:'Fixture y resultados', r:['dirigente','dt','jugador']},
- {v:'tabla',      ic:'≡',t:'Tabla de posiciones',  r:['dirigente','dt','jugador']},
- {v:'plantel',    ic:'☰',t:'Plantel',              r:['dirigente','dt','jugador']},
- {v:'stats',      ic:'◔',t:'Estadísticas',         r:['dirigente','dt','jugador']},
- {v:'disciplina', ic:'▲',t:'Disciplina',           r:['dirigente','dt','jugador']},
- {v:'citaciones', ic:'✉',t:'Citaciones',           r:['dirigente','dt','jugador']},
+ {v:'panel',      ic:'◈',t:'Panel',                r:['dirigente','dt','jugador','publico']},
+ {v:'fixture',    ic:'▦',t:'Fixture y resultados', r:['dirigente','dt','jugador','publico']},
+ {v:'tabla',      ic:'≡',t:'Tabla de posiciones',  r:['dirigente','dt','jugador','publico']},
+ {v:'plantel',    ic:'☰',t:'Plantel',              r:['dirigente','dt','jugador','publico']},
+ {v:'stats',      ic:'◔',t:'Estadísticas',         r:['dirigente','dt','jugador','publico']},
+ {v:'disciplina', ic:'▲',t:'Disciplina',           r:['dirigente','dt','jugador','publico']},
+ {v:'citaciones', ic:'✉',t:'Citaciones',           r:['dirigente','dt','jugador','publico']},
  {v:'zona',       ic:'◍',t:'Zona / Rivales',       r:['dirigente','dt']},
  {v:'altas',      ic:'⊕',t:'Altas pendientes',     r:['dirigente']},
  {v:'usuarios',   ic:'⚇',t:'Usuarios',             r:['dirigente']},
@@ -451,13 +464,18 @@ const NAV=[
 function pintarShell(){
   if(esDT()&&YO.cat&&!F.cat) F.cat=YO.cat;
   const ini=(YO.nombre||YO.email||'?').trim()[0].toUpperCase();
+  const pie = esPub()
+    ? '<div class="me"><div class="av" style="background:var(--panel2);color:var(--muted)">◉</div>'+
+      '<div style="flex:1;min-width:0"><b>Vista pública</b><span>Solo lectura</span></div></div>'+
+      '<a onclick="vistaLogin()" style="background:var(--acc2);color:#fff;font-weight:700"><span class="ic">→</span>Entrar</a>'+
+      '<div class="mut" style="font-size:10.5px;padding:6px 10px;line-height:1.45">Para técnicos y dirigentes del club</div>'
+    : '<div class="me"><div class="av">'+esc(ini)+'</div><div style="flex:1;min-width:0"><b>'+esc(YO.nombre||YO.email)+'</b>'+
+      '<span class="ro '+(esDir()?'dir':esDT()?'dt':'')+'">'+ROL[YO.rol]+(esDT()&&YO.cat?' · '+esc(cat(YO.cat).nombre):'')+'</span></div></div>'+
+      '<a onclick="salir()" style="color:var(--muted)"><span class="ic">⏻</span>Cerrar sesión</a>';
   root().innerHTML='<div id="app"><nav>'+
     '<div class="brand"><div class="star">'+ESCUDO+'</div><div><b>'+esc(DB.config.club||'Estrella del Sur')+'</b><small>Futsal · '+esc(DB.config.temporada||'')+'</small></div></div>'+
     NAV.filter(n=>n.r.includes(YO.rol)).map(n=>'<a data-v="'+n.v+'"><span class="ic">'+n.ic+'</span>'+n.t+'<span class="badge" id="bdg_'+n.v+'" style="display:none"></span></a>').join('')+
-    '<div class="me"><div class="av">'+esc(ini)+'</div><div style="flex:1;min-width:0"><b>'+esc(YO.nombre||YO.email)+'</b>'+
-    '<span class="ro '+(esDir()?'dir':esDT()?'dt':'')+'">'+ROL[YO.rol]+(esDT()&&YO.cat?' · '+esc(cat(YO.cat).nombre):'')+'</span></div></div>'+
-    '<a onclick="salir()" style="color:var(--muted)"><span class="ic">⏻</span>Cerrar sesión</a>'+
-    '</nav><main id="main"></main></div>';
+    pie+'</nav><main id="main"></main></div>';
   root().querySelectorAll('nav a[data-v]').forEach(a=>a.onclick=()=>{ V=a.dataset.v; render(); });
 }
 function render(){
@@ -499,10 +517,13 @@ function vPanel(){
   const prox=DB.partidos.filter(p=>!p.jugado).sort((a,b)=>(a.fecha||'z').localeCompare(b.fecha||'z')).slice(0,6);
   const tope=DB.config.topeAmarillas||5;
   const riesgo=DB.jugadores.filter(j=>j.estado!=='baja'&&amarillasTotales(j.id)>0&&amarillasAcum(j.id)===tope-1);
-  const sinCit=prox.filter(p=>(p.local===yo||p.visitante===yo)&&!DB.citaciones.some(c=>c.pid===p.id));
+  const sinCit=esPub()?[]:prox.filter(p=>(p.local===yo||p.visitante===yo)&&!DB.citaciones.some(c=>c.pid===p.id));
   const act=DB.jugadores.filter(j=>j.estado!=='baja');
 
   let h=head(esc(DB.config.club),'Temporada '+esc(DB.config.temporada)+' · '+cats().length+' categorías · '+act.length+' jugadores');
+  if(esPub()) h+='<div class="alert a-inf" style="margin-bottom:14px">Estás viendo la información del club en modo público. '+
+    '<b>¿Sos jugador?</b> Pedile el link de alta al club para cargar tu ficha. '+
+    '<b>¿Sos técnico o dirigente?</b> Tocá <b>Entrar</b> abajo a la izquierda.</div>';
   h+='<div class="grid g4" style="margin-bottom:14px">'+kpi(act.length,'Jugadores')+
      kpi(DB.partidos.filter(p=>p.jugado).length,'Partidos jugados')+
      kpi(susp.length,'Suspendidos',susp.length?'var(--bad)':'')+
@@ -513,9 +534,9 @@ function vPanel(){
   let n=0;
   susp.forEach(s=>{ n++; h+='<div class="alert a-bad"><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> — '+esc(cat(s.cat).nombre)+(s.jid?'':' <span class="mut">('+esc(eq(s.eqid).nombre)+')</span>')+'<br><span class="mut" style="font-size:12px">'+esc(s.motivo)+' · le quedan '+s.rest+' fecha(s)</span></div>'; });
   riesgo.forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> está a <b>una amarilla</b> de la suspensión <span class="mut">('+amarillasAcum(j.id)+'/'+tope+')</span></div>'; });
-  DB.jugadores.filter(j=>j.estado==='lesionado').forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> — lesionado <span class="mut" style="font-size:12px">'+esc(j.lesion||'sin detalle')+'</span></div>'; });
+  DB.jugadores.filter(j=>j.estado==='lesionado').forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> — lesionado'+(esPub()?'':' <span class="mut" style="font-size:12px">'+esc(j.lesion||'sin detalle')+'</span>')+'</div>'; });
   sinCit.forEach(p=>{ n++; h+='<div class="alert a-inf">Falta la citación de <b>'+esc(cat(p.cat).nombre)+'</b> vs '+esc(eq(p.local===yo?p.visitante:p.local).nombre)+' <span class="mut">('+fdate(p.fecha)+')</span></div>'; });
-  if(!n) h+='<div class="alert a-inf">✓ Todo en orden. Sin suspendidos y las citaciones al día.</div>';
+  if(!n) h+='<div class="alert a-inf">✓ Todo en orden. Sin suspendidos ni lesionados.</div>';
   h+='</div><div class="card"><h2>▦ Próximos partidos</h2>';
   h+= prox.length? '<div class="tw"><table><tbody>'+prox.map(p=>{ const d=dias(p.fecha), mio=p.local===yo||p.visitante===yo;
       return '<tr><td style="width:62px" class="mut">'+fdate(p.fecha)+'</td><td><b>'+esc(eq(p.local).nombre)+'</b> vs <b>'+esc(eq(p.visitante).nombre)+'</b><div class="mut" style="font-size:11.5px">'+esc(cat(p.cat).nombre)+' · fecha '+esc(p.fnro||'—')+'</div></td>'+
@@ -677,7 +698,7 @@ function vPlantel(){
   js.forEach(j=>{
     const st=estado(j.id), s=statsJug(j.id);
     h+='<tr><td class="num mut">'+esc(j.dorsal||'—')+'</td><td><b>'+esc(j.nombre)+'</b>'+(j.dni?'<div class="mut" style="font-size:11px">DNI '+esc(j.dni)+'</div>':'')+'</td>'+
-    '<td class="mut">'+esc(cat(j.cat).nombre)+'</td><td class="mut">'+esc(j.pos||'—')+'</td><td class="num">'+edad(j.nac)+'</td>'+
+    '<td class="mut">'+esc(cat(j.cat).nombre)+'</td><td class="mut">'+esc(j.pos||'—')+'</td><td class="num">'+edadDe(j)+'</td>'+
     '<td><span class="tag '+st.cls+'">'+st.txt+'</span></td><td class="num">'+s.pj+'</td><td class="num"><b>'+s.g+'</b></td><td class="num">'+amarillasAcum(j.id)+'</td>'+
     '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mFicha(\''+j.id+'\')">Ficha</button>'+
     (puedeCat(j.cat)?'<button class="gh sm" onclick="mJugador(\''+j.id+'\')">Editar</button>':'')+'</td></tr>';
@@ -724,8 +745,9 @@ function mFicha(id){
   let h='<div class="btns" style="margin-bottom:14px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12px">'+esc(st.motivo)+'</span>':'')+'</div>'+
    '<div class="grid g4" style="margin-bottom:14px">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(id)+'/'+tope,'Amarillas')+'</div>'+
    '<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
-   [['Categoría',cat(j.cat).nombre],['Posición',j.pos||'—'],['Edad',edad(j.nac)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
-    ['DNI',j.dni||'—'],['Teléfono',j.tel||'—'],['Carnet',j.carnet||'—'],['Emergencia',j.emergencia||'—'],['Minutos',s.min],['Titular en',s.tit+' partidos'],['Estado',j.estado||'activo']]
+   ([['Categoría',cat(j.cat).nombre],['Posición',j.pos||'—'],['Edad',edadDe(j)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
+    ['Minutos',s.min],['Titular en',s.tit+' partidos'],['Estado',j.estado||'activo']]
+    .concat(esPub()?[]:[['DNI',j.dni||'—'],['Teléfono',j.tel||'—'],['Carnet',j.carnet||'—'],['Emergencia',j.emergencia||'—']]))
    .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>';
   if(j.pos==='Arquero') h+='<div class="grid g4" style="margin:14px 0">'+kpi(s.gr,'Goles recibidos')+kpi(s.vi,'Vallas invictas','var(--ok)')+kpi((s.gr/(s.pj||1)).toFixed(2),'Promedio')+'</div>';
   if(sanc.length) h+='<h2 style="margin-top:14px">Historial disciplinario</h2><div class="tw"><table><tbody>'+
