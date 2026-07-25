@@ -181,7 +181,7 @@ const propio=()=>DB.equipos.find(e=>e.propio)||{id:'',nombre:DB.config.club||'Es
 const cats=()=>DB.categorias;
 const jugsDe=c=>DB.jugadores.filter(j=>j.cat===c&&j.estado!=='baja');
 const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
-const RAMAS=['Masculino','Femenino','Otras'];
+const RAMAS=['Masculino','Femenino','Senior','Otras'];
 // Cualquier rama desconocida cae en 'Otras' para que ninguna categoría se pierda de las listas
 const ramaDe=c=>RAMAS.includes(c&&c.rama)?c.rama:'Otras';
 
@@ -427,9 +427,8 @@ async function vistaAlta(token){
    '<div class="f"><label>DNI *</label><input id="aD" inputmode="numeric"></div></div>'+
    '<div class="row"><div class="f"><label>Fecha de nacimiento *</label><input type="date" id="aF" min="1930-01-01" max="'+hoy()+'"></div>'+
    '<div class="f"><label>Categoría *</label><select id="aC"><option value="">— elegir —</option>'+opt+'</select></div></div>'+
-   '<div class="row"><div class="f"><label>Pie hábil</label><select id="aPi">'+['Derecho','Izquierdo','Ambos'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
-   '<div class="f"><label>Dorsal que usás</label><input id="aDo" inputmode="numeric" placeholder="opcional"></div></div>'+
-   '<div class="row"><div class="f"><label>Tu teléfono *</label><input id="aT" inputmode="tel" placeholder="11-5555-5555"></div>'+
+   '<div class="row"><div class="f"><label>Dorsal que usás</label><input id="aDo" inputmode="numeric" placeholder="opcional"></div>'+
+   '<div class="f"><label>Tu teléfono *</label><input id="aT" inputmode="tel" placeholder="11-5555-5555"></div>'+
    '<div class="f"><label>Contacto de emergencia *</label><input id="aE" placeholder="Nombre y teléfono"></div></div>'+
    '<div class="f"><label>Algo que el club deba saber</label><textarea id="aO" rows="2" placeholder="Alergias, medicación, lesiones previas… (opcional)"></textarea></div>'+
    '<button style="width:100%;padding:11px;margin-top:6px" onclick="enviarAlta(\''+esc(token)+'\',this)">Enviar mi ficha</button>'+
@@ -443,7 +442,7 @@ async function enviarAlta(token,btn){
   if(!(e>=4&&e<=99)) return msg('Revisá la fecha de nacimiento: no parece correcta');
   const b=btn||{}; b.disabled=true; b.textContent='Enviando…';
   const {error}=await SB.from('altas').insert({token,nombre:val('aN'),dni:val('aD'),nac:nn(val('aF')),
-    cat:val('aC'),pie:val('aPi'),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
+    cat:val('aC'),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
   if(error){ b.disabled=false; b.textContent='Enviar mi ficha';
     return msg(/row-level|check/i.test(error.message)?'El link no es válido o venció. Pedile uno nuevo al club.':traducir(error.message)); }
   root().innerHTML='<div id="gate"><div class="box" style="text-align:center"><div class="lg">'+ESCUDO+'</div>'+
@@ -1011,7 +1010,7 @@ function vAltas(){
     h+='<tr><td><b>'+esc(a.nombre)+'</b><div class="mut" style="font-size:11px">DNI '+esc(a.dni||'—')+' · '+edad(a.nac)+' años</div>'+
       (dup?'<span class="tag t-warn">ya existe con ese DNI</span>':'')+'</td>'+
       '<td class="mut">'+esc(cat(a.cat).nombre)+'</td>'+
-      '<td class="mut" style="font-size:12px">'+esc(a.pie||'')+(a.dorsal?' · #'+esc(a.dorsal):'')+'<br>'+esc(a.tel||'')+
+      '<td class="mut" style="font-size:12px">'+(a.dorsal?'#'+esc(a.dorsal)+'<br>':'')+esc(a.tel||'')+
       (a.obs?'<div style="margin-top:4px;color:var(--warn)">⚠ '+esc(a.obs)+'</div>':'')+'</td>'+
       '<td class="mut" style="font-size:12px">'+fdate(String(a.creada).slice(0,10))+'</td>'+
       '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="verAlta(\''+a.id+'\')">Ver</button>'+
@@ -1024,7 +1023,7 @@ function verAlta(id){
   const a=DB.altas.find(x=>x.id===id);
   modal(esc(a.nombre),'<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
    [['DNI',a.dni],['Nacimiento',fdate(a.nac)+' ('+edad(a.nac)+' años)'],['Categoría',cat(a.cat).nombre],
-    ['Pie',a.pie],['Dorsal',a.dorsal||'—'],['Teléfono',a.tel],['Emergencia',a.emergencia]]
+    ['Dorsal',a.dorsal||'—'],['Teléfono',a.tel],['Emergencia',a.emergencia]]
    .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1]||'—')+'</b></div>').join('')+'</div></div>'+
    (a.obs?'<div class="alert a-warn" style="margin-top:12px"><b>Observaciones:</b> '+esc(a.obs)+'</div>':'')+
    '<div class="btns" style="margin-top:14px"><button onclick="aprobarAlta(\''+id+'\')">Aprobar y sumar al plantel</button>'+
@@ -1032,7 +1031,7 @@ function verAlta(id){
 }
 async function aprobarAlta(id){
   const a=DB.altas.find(x=>x.id===id);
-  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,pie:a.pie,
+  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,
     dorsal:a.dorsal,emergencia:a.emergencia,estado:'activo'}))return;
   await SB.from('altas').update({estado:'aprobada'}).eq('id',id);
   cerrar(); await refrescar(); toast(a.nombre+' sumado al plantel');
