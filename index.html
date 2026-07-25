@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ce1417">
+<title>Estrella del Sur</title>
+<link rel="icon" href='data:image/svg+xml;utf8,%3Csvg viewBox=%220 0 466 538%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cpath d=%22M6,86 C82,104 176,94 233,8 C290,94 384,104 460,86 C460,300 378,472 233,532 C88,472 6,300 6,86 Z%22 fill=%22%23fff%22 stroke=%22%23000%22 stroke-width=%2217%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M48,146 L145,133 L233,478 C160,415 88,290 48,146 Z%22 fill=%22%23ce1417%22/%3E%3Cpath d=%22M418,146 L321,133 L233,478 C306,415 378,290 418,146 Z%22 fill=%22%23ce1417%22/%3E%3Cpath d=%22M233,88 L248,131 L294,132 L258,160 L271,204 L233,178 L195,204 L208,160 L172,132 L218,131 Z%22 fill=%22%23ce1417%22/%3E%3C/svg%3E'>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+
+:root{
+  --bg:#0e1117; --panel:#161b25; --panel2:#1d2432; --line:#2a3346;
+  --txt:#e6ebf5; --muted:#8b97ad; --acc:#ff5f5f; --acc2:#ce1417; --brand:#ce1417;
+  --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5}
+#app{display:flex;min-height:100vh}
+/* NAV */
+nav{width:212px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);padding:16px 10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:9px;padding:0 8px 16px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.brand .star{width:34px;height:38px;flex-shrink:0;display:grid;place-items:center}
+.brand .star svg{width:100%;height:100%;display:block}
+.brand b{font-size:15px;letter-spacing:-.2px}
+.brand small{display:block;color:var(--muted);font-size:10.5px;font-weight:400;letter-spacing:.4px;text-transform:uppercase}
+nav a{display:flex;align-items:center;gap:9px;padding:8.5px 10px;border-radius:8px;color:var(--muted);text-decoration:none;cursor:pointer;font-weight:500;margin-bottom:2px;transition:.12s}
+nav a:hover{background:var(--panel2);color:var(--txt)}
+nav a.on{background:var(--acc2);color:#fff}
+nav a .ic{width:18px;text-align:center;font-size:14px}
+nav a .badge{margin-left:auto;background:var(--bad);color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;font-weight:700}
+/* MAIN */
+main{flex:1;padding:22px 26px;max-width:1500px;overflow-x:hidden}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+h1{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+h2{font-size:15px;font-weight:650;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+/* CARDS */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.kpi .n{font-size:27px;font-weight:750;letter-spacing:-1px;line-height:1.1}
+.kpi .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600}
+/* FORM */
+input,select,textarea,button{font-family:inherit;font-size:13px}
+input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:8px 10px;border-radius:7px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--acc2)}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.f{margin-bottom:10px}
+.row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+button{background:var(--acc2);color:#fff;border:none;padding:8.5px 15px;border-radius:7px;cursor:pointer;font-weight:600;transition:.12s}
+button:hover{filter:brightness(1.12)}
+button.gh{background:transparent;border:1px solid var(--line);color:var(--muted)}
+button.gh:hover{color:var(--txt);border-color:var(--muted)}
+button.sm{padding:4px 9px;font-size:11.5px}
+button.dgr{background:var(--bad)}
+button.gld{background:#fff;color:#111}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:7px 9px;border-bottom:1px solid var(--line);font-weight:700;white-space:nowrap}
+td{padding:8px 9px;border-bottom:1px solid rgba(42,51,70,.5);vertical-align:middle}
+tbody tr:hover{background:var(--panel2)}
+td.num,th.num{text-align:center}
+.tw{overflow-x:auto}
+/* TAGS */
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.2px;white-space:nowrap}
+.t-ok{background:rgba(34,197,94,.15);color:#4ade80}
+.t-warn{background:rgba(245,158,11,.15);color:#fbbf24}
+.t-bad{background:rgba(239,68,68,.15);color:#f87171}
+.t-inf{background:rgba(59,130,246,.15);color:#93c5fd}
+.t-mut{background:var(--panel2);color:var(--muted)}
+.pill{background:var(--panel2);border:1px solid var(--line);padding:3px 9px;border-radius:20px;font-size:11.5px;color:var(--muted)}
+.mut{color:var(--muted)}
+.empty{text-align:center;padding:34px 16px;color:var(--muted)}
+.empty .e{font-size:32px;opacity:.35;display:block;margin-bottom:8px}
+/* TABS */
+.tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto;padding-bottom:0}
+.tabs span{padding:8px 13px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-weight:600;font-size:13px;white-space:nowrap}
+.tabs span.on{color:var(--acc);border-bottom-color:var(--acc)}
+/* MODAL */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;place-items:center;z-index:60;padding:18px;backdrop-filter:blur(2px)}
+.mask.on{display:grid}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:20px;width:100%;max-width:620px;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.x{cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+/* MISC */
+.alert{border-radius:8px;padding:10px 13px;margin-bottom:9px;border-left:3px solid;font-size:13px}
+.a-bad{background:rgba(239,68,68,.08);border-color:var(--bad)}
+.a-warn{background:rgba(245,158,11,.08);border-color:var(--warn)}
+.a-inf{background:rgba(59,130,246,.08);border-color:var(--acc2)}
+.chk{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--panel2)}
+.chk:hover{border-color:var(--acc2)}
+.chk.blk{opacity:.5;cursor:not-allowed;background:transparent}
+.chk.sel{border-color:var(--acc2);background:rgba(59,130,246,.1)}
+.chk input{width:16px;height:16px;flex-shrink:0;accent-color:var(--acc2)}
+.chk .nm{flex:1;font-weight:600}
+.scr{font-family:ui-monospace,monospace;font-size:15px;font-weight:700}
+pre.out{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:13px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;max-height:340px;overflow-y:auto;color:var(--txt)}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ok);color:#0b1211;padding:11px 17px;border-radius:9px;font-weight:650;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}
+.toast.on{opacity:1;transform:none}
+.bar{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc2)}
+@media(max-width:860px){
+  #app{flex-direction:column}
+  nav{width:100%;height:auto;position:static;display:flex;overflow-x:auto;padding:9px;gap:4px}
+  nav .brand{display:none}
+  nav a{white-space:nowrap;margin:0}
+  main{padding:15px}
+}
+
+/* ---- LOGIN / PANTALLAS PLENAS ---- */
+#gate{min-height:100vh;display:grid;place-items:center;padding:20px}
+.box{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px}
+.box .lg{width:74px;height:84px;margin:0 auto 14px}
+.box .lg svg{width:100%;height:100%}
+.box h1{font-size:20px;text-align:center;margin-bottom:3px}
+.box .s{text-align:center;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:22px}
+.box button{width:100%;padding:11px;margin-top:6px}
+.swap{text-align:center;margin-top:15px;font-size:12.5px;color:var(--muted)}
+.swap a{color:var(--acc);cursor:pointer;text-decoration:none;font-weight:600}
+.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:9px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px}
+.okm{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#86efac;padding:9px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px}
+#pub{max-width:620px;margin:0 auto;padding:26px 18px}
+#pub .hd{display:flex;align-items:center;gap:15px;margin-bottom:22px}
+#pub .hd .lg{width:56px;height:64px;flex-shrink:0}
+#pub .hd .lg svg{width:100%;height:100%}
+.load{display:grid;place-items:center;min-height:100vh;color:var(--muted);gap:14px}
+.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--acc2);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.me{display:flex;align-items:center;gap:9px;padding:9px 10px;border-top:1px solid var(--line);margin-top:10px;font-size:12px}
+.me .av{width:28px;height:28px;border-radius:50%;background:var(--acc2);display:grid;place-items:center;font-weight:700;font-size:12px;flex-shrink:0}
+.me b{display:block;font-size:12.5px;line-height:1.3}
+.me span{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+.ro{background:var(--panel2);border:1px solid var(--line);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.ro.dir{background:rgba(206,20,23,.18);color:#ff8080;border-color:rgba(206,20,23,.4)}
+.ro.dt{background:rgba(59,130,246,.15);color:#93c5fd;border-color:rgba(59,130,246,.35)}
+.lnk{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-family:ui-monospace,monospace;font-size:11.5px;word-break:break-all}
+</style>
+</head>
+<body>
+<div id="root"><div class="load"><div class="spin"></div><div>Conectando…</div></div></div>
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ============================================================
+   ESTRELLA DEL SUR — configuración de conexión
+   Reemplazá estos dos valores por los de TU proyecto Supabase.
+   Están en: Supabase → Project Settings → API
+   ============================================================ */
+const CFG = {
+  url: 'https://jbgmsebkbciridldveys.supabase.co',
+  key: 'sb_publishable_UXsCZCm5jjDmcQ2V5X003Q_3FKHFN4l'
+};
+/* ============================================================ */
+const ESCUDO = `<svg viewBox="0 0 466 538" xmlns="http://www.w3.org/2000/svg"><path d="M6,86 C82,104 176,94 233,8 C290,94 384,104 460,86 C460,300 378,472 233,532 C88,472 6,300 6,86 Z" fill="#fff" stroke="#000" stroke-width="17" stroke-linejoin="round"/><path d="M48,146 L145,133 L233,478 C160,415 88,290 48,146 Z" fill="#ce1417"/><path d="M418,146 L321,133 L233,478 C306,415 378,290 418,146 Z" fill="#ce1417"/><path d="M233,88 L248,131 L294,132 L258,160 L271,204 L233,178 L195,204 L208,160 L172,132 L218,131 Z" fill="#ce1417"/></svg>`;
+/* ============ CLIENTE Y ESTADO ============ */
+let SB=null, YO=null, V='panel', F={cat:'',torneo:''}, SANC=[];
+let DB={config:{},categorias:[],equipos:[],jugadores:[],partidos:[],stats:[],sanciones:[],citaciones:[],altas:[],perfiles:[]};
+
+const $=id=>document.getElementById(id);
+const root=()=>$('root');
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(m,malo){ const t=$('toast'); t.textContent=m; t.style.background=malo?'var(--bad)':'var(--ok)'; t.style.color=malo?'#fff':'#0b1211'; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2800); }
+function fdate(d){ if(!d)return '—'; const p=String(d).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d; }
+function hoy(){ return new Date().toISOString().slice(0,10); }
+function dias(d){ if(!d)return null; return Math.round((new Date(String(d).slice(0,10)+'T12:00')-new Date(hoy()+'T12:00'))/864e5); }
+function edad(f){ if(!f)return '—'; const b=new Date(f),n=new Date(); let a=n.getFullYear()-b.getFullYear(); const m=n.getMonth()-b.getMonth(); if(m<0||(m===0&&n.getDate()<b.getDate()))a--; return a; }
+function val(id){ const e=$(id); return e?String(e.value).trim():''; }
+function chk(id){ const e=$(id); return e?e.checked:false; }
+function nn(v){ return v===''?null:v; }
+
+/* atajos */
+const cat=id=>DB.categorias.find(c=>c.id===id)||{nombre:'—'};
+const eq =id=>DB.equipos.find(e=>e.id===id)||{nombre:'—'};
+const jug=id=>DB.jugadores.find(j=>j.id===id)||{nombre:'—'};
+const propio=()=>DB.equipos.find(e=>e.propio)||{id:'',nombre:DB.config.club||'Estrella del Sur'};
+const cats=()=>DB.categorias;
+const jugsDe=c=>DB.jugadores.filter(j=>j.cat===c&&j.estado!=='baja');
+const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
+const RAMAS=['Masculino','Femenino','Veteranos','Otras'];
+
+/* permisos */
+const esDir =()=>YO&&YO.rol==='dirigente';
+const esDT  =()=>YO&&YO.rol==='dt';
+const esJug =()=>YO&&YO.rol==='jugador';
+const puedeCat=c=>esDir()||(esDT()&&c&&c===YO.cat);
+const miJugador=()=>DB.jugadores.find(j=>j.user_id===YO.user_id);
+const ROL={dirigente:'Dirigente',dt:'Entrenador',jugador:'Jugador'};
+
+/* ============ CARGA DE DATOS ============ */
+const pIn =r=>({...r,local:r.eq_local,visitante:r.eq_visita});
+const pOut=o=>({id:o.id,cat:o.cat,torneo:o.torneo,fnro:o.fnro,fecha:nn(o.fecha),hora:o.hora,cancha:o.cancha,
+  eq_local:o.local,eq_visita:o.visitante,gl:o.gl,gv:o.gv,arbitro:o.arbitro,jugado:o.jugado});
+const cIn =r=>({club:r.club,temporada:r.temporada,topeAmarillas:r.tope_amarillas,fechasRoja:r.fechas_roja,
+  ptsVictoria:r.pts_victoria,ptsEmpate:r.pts_empate,token:r.token_alta});
+
+async function cargarTodo(){
+  const q=t=>SB.from(t).select('*');
+  const [cf,ca,eqs,ju,pa,st,sa,ci,pe]=await Promise.all([
+    SB.from('config').select('*').eq('id',1).single(),
+    SB.from('categorias').select('*').order('orden'),
+    SB.from('equipos').select('*').order('nombre'),
+    q('jugadores'),q('partidos'),q('stats'),q('sanciones'),q('citaciones'),q('perfiles')]);
+  const err=[cf,ca,eqs,ju,pa,st,sa,ci,pe].find(r=>r.error);
+  if(err){ throw new Error(err.error.message); }
+  DB.config=cIn(cf.data);
+  DB.categorias=ca.data||[]; DB.equipos=eqs.data||[]; DB.jugadores=ju.data||[];
+  DB.partidos=(pa.data||[]).map(pIn); DB.stats=st.data||[]; DB.sanciones=sa.data||[];
+  DB.citaciones=ci.data||[]; DB.perfiles=pe.data||[];
+  DB.altas=[];
+  if(esDir()){ const a=await SB.from('altas').select('*').eq('estado','pendiente').order('creada'); DB.altas=a.data||[]; }
+}
+async function guardar(tabla,filas,opts){
+  const {error}=await SB.from(tabla).upsert(filas,opts||{});
+  if(error){ toast(traducir(error.message),true); return false; }
+  return true;
+}
+async function borrarFila(tabla,id){
+  const {error}=await SB.from(tabla).delete().eq('id',id);
+  if(error){ toast(traducir(error.message),true); return false; }
+  return true;
+}
+function traducir(m){
+  if(/row-level security|violates row-level/i.test(m)) return 'No tenés permiso para hacer eso';
+  if(/duplicate key/i.test(m)) return 'Ese registro ya existe';
+  if(/Invalid login/i.test(m)) return 'Email o contraseña incorrectos';
+  if(/already registered/i.test(m)) return 'Ese email ya está registrado';
+  if(/at least 6/i.test(m)) return 'La contraseña necesita al menos 6 caracteres';
+  if(/Email not confirmed/i.test(m)) return 'Falta confirmar el email (revisá tu casilla)';
+  return m;
+}
+async function refrescar(){ try{ await cargarTodo(); render(); }catch(e){ toast(e.message,true); } }
+
+/* ============ MOTOR DE DISCIPLINA (calculado, no almacenado) ============
+   La tabla `sanciones` guarda SOLO lo que se carga a mano (tribunal, rivales).
+   Las rojas de planilla y la acumulación de amarillas se derivan en el momento,
+   así nunca se duplican ni quedan desfasadas.                                */
+function amarillasTotales(jid){
+  let t=0;
+  DB.stats.filter(s=>s.jid===jid).forEach(s=>{
+    const p=DB.partidos.find(x=>x.id===s.pid);
+    if(p&&p.jugado) t+=(+s.am||0);
+  });
+  return t;
+}
+function amarillasAcum(jid){ const t=DB.config.topeAmarillas||5; return amarillasTotales(jid)%t; }
+
+function fechasJugadas(catId,eqId,desde){
+  return DB.partidos.filter(p=>p.jugado&&p.cat===catId&&(p.fecha||'')>(desde||'')&&
+    (p.local===eqId||p.visitante===eqId)).length;
+}
+function calcularSanciones(){
+  const out=[], tope=DB.config.topeAmarillas||5, yo=propio().id;
+  const push=s=>{
+    const eqId=s.jid?yo:s.eqid;
+    const cum=Math.min(s.total,(s.cumplidas||0)+fechasJugadas(s.cat,eqId,s.desde));
+    out.push({...s,cumplidas:cum,rest:Math.max(0,s.total-cum),activa:cum<s.total});
+  };
+  // 1. cargadas a mano (tribunal propio y de rivales)
+  DB.sanciones.forEach(push);
+  // 2. rojas de planilla
+  DB.stats.filter(s=>s.roja).forEach(s=>{
+    const p=DB.partidos.find(x=>x.id===s.pid); if(!p||!p.jugado)return;
+    const j=DB.jugadores.find(x=>x.id===s.jid); if(!j)return;
+    if(DB.sanciones.some(x=>x.origen==='roja-'+s.pid+'-'+s.jid))return;
+    push({id:'auto-roja-'+s.pid+'-'+s.jid,jid:s.jid,cat:p.cat,tipo:'roja',auto:true,
+      total:DB.config.fechasRoja||1,cumplidas:0,desde:p.fecha,
+      motivo:'Expulsión vs '+eq(p.local===yo?p.visitante:p.local).nombre});
+  });
+  // 3. acumulación de amarillas
+  DB.jugadores.forEach(j=>{
+    const n=Math.floor(amarillasTotales(j.id)/tope);
+    if(!n)return;
+    const jugados=DB.partidos.filter(p=>p.jugado&&p.cat===j.cat&&(p.local===yo||p.visitante===yo))
+      .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+    let acum=0, disparos=[];
+    jugados.forEach(p=>{
+      const s=DB.stats.find(x=>x.pid===p.id&&x.jid===j.id);
+      acum+=s?(+s.am||0):0;
+      while(disparos.length<Math.floor(acum/tope)) disparos.push(p.fecha);
+    });
+    disparos.forEach((f,i)=>push({id:'auto-acum-'+j.id+'-'+i,jid:j.id,cat:j.cat,tipo:'acumulacion',auto:true,
+      total:1,cumplidas:0,desde:f,motivo:'Acumulación de '+tope+' amarillas'}));
+  });
+  return out;
+}
+const suspendidos=c=>SANC.filter(s=>s.rest>0&&(!c||s.cat===c));
+
+function estado(jid){
+  const j=jug(jid);
+  const act=SANC.filter(s=>s.jid===jid&&s.rest>0);
+  const rest=act.reduce((a,s)=>a+s.rest,0);
+  if(rest>0) return {ok:false,cls:'t-bad',txt:'SUSPENDIDO ('+rest+' fecha'+(rest>1?'s':'')+')',motivo:act.map(s=>s.motivo).join(' · '),rest};
+  if(j.estado==='lesionado') return {ok:false,cls:'t-bad',txt:'LESIONADO',motivo:j.lesion||'Sin detalle',rest:0};
+  const am=amarillasAcum(jid), tope=DB.config.topeAmarillas||5;
+  if(am>=tope-1) return {ok:true,cls:'t-warn',txt:'EN RIESGO ('+am+'/'+tope+')',motivo:'A una amarilla de la suspensión',rest:0};
+  return {ok:true,cls:'t-ok',txt:'HABILITADO',motivo:'',rest:0};
+}
+/* ============ TABLA Y ESTADÍSTICAS ============ */
+function tabla(c,torneo){
+  const T={}, add=id=>{ if(!T[id])T[id]={id,pj:0,g:0,e:0,p:0,gf:0,gc:0}; return T[id]; };
+  DB.partidos.filter(p=>p.jugado&&(!c||p.cat===c)&&(!torneo||p.torneo===torneo)).forEach(p=>{
+    if(!p.local||!p.visitante)return;
+    const L=add(p.local),Vi=add(p.visitante),gl=+p.gl||0,gv=+p.gv||0;
+    L.pj++;Vi.pj++;L.gf+=gl;L.gc+=gv;Vi.gf+=gv;Vi.gc+=gl;
+    if(gl>gv){L.g++;Vi.p++;} else if(gl<gv){Vi.g++;L.p++;} else {L.e++;Vi.e++;}
+  });
+  const pv=DB.config.ptsVictoria||3, pe=DB.config.ptsEmpate||1;
+  return Object.values(T).map(t=>({...t,pts:t.g*pv+t.e*pe,dif:t.gf-t.gc}))
+    .sort((a,b)=>b.pts-a.pts||b.dif-a.dif||b.gf-a.gf||eq(a.id).nombre.localeCompare(eq(b.id).nombre));
+}
+function statsJug(jid,c,torneo){
+  const r={pj:0,tit:0,min:0,g:0,a:0,am:0,rj:0,fal:0,gr:0,vi:0};
+  DB.stats.filter(s=>s.jid===jid).forEach(s=>{
+    const p=DB.partidos.find(x=>x.id===s.pid);
+    if(!p||!p.jugado)return; if(c&&p.cat!==c)return; if(torneo&&p.torneo!==torneo)return;
+    r.pj++; if(s.tit)r.tit++; r.min+=+s.min||0; r.g+=+s.g||0; r.a+=+s.a||0;
+    r.am+=+s.am||0; if(s.roja)r.rj++; r.fal+=+s.fal||0;
+    if(jug(jid).pos==='Arquero'){ const rec=+s.gr||0; r.gr+=rec; if(rec===0&&(+s.min||0)>0)r.vi++; }
+  });
+  return r;
+}
+/* ============ ARRANQUE Y RUTEO ============ */
+const PARAMS=new URLSearchParams(location.search);
+async function iniciar(){
+  if(!CFG.url.includes('supabase.co')||CFG.key.startsWith('TU-')){
+    root().innerHTML='<div id="gate"><div class="box"><div class="lg">'+ESCUDO+'</div>'+
+      '<h1>Falta configurar la conexión</h1><div class="s">Estrella del Sur</div>'+
+      '<div class="err">Abrí este archivo con un editor de texto y reemplazá <b>CFG.url</b> y <b>CFG.key</b> por los datos de tu proyecto de Supabase (Project Settings → API).</div></div></div>';
+    return;
+  }
+  SB=window.supabase.createClient(CFG.url,CFG.key);
+  if(PARAMS.get('alta')) return vistaAlta(PARAMS.get('alta'));
+  const {data}=await SB.auth.getSession();
+  SB.auth.onAuthStateChange((ev)=>{ if(ev==='SIGNED_OUT'){ YO=null; vistaLogin(); } });
+  if(data.session) return entrar();
+  vistaLogin();
+}
+async function entrar(){
+  root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando el club…</div></div>';
+  const {data:{user}}=await SB.auth.getUser();
+  if(!user) return vistaLogin();
+  let {data:perf}=await SB.from('perfiles').select('*').eq('user_id',user.id).maybeSingle();
+  if(!perf){ await new Promise(r=>setTimeout(r,1200));
+    const rr=await SB.from('perfiles').select('*').eq('user_id',user.id).maybeSingle(); perf=rr.data; }
+  if(!perf){ return vistaLogin('No se pudo leer tu perfil. Verificá que corriste el script SQL completo.'); }
+  YO={...perf,email:user.email};
+  try{ await cargarTodo(); }catch(e){ return vistaLogin('Error al cargar: '+e.message); }
+  if(esJug()&&!['panel','tabla','stats','citaciones','fixture'].includes(V)) V='panel';
+  pintarShell(); render();
+}
+/* ---------- LOGIN ---------- */
+function vistaLogin(msg){
+  root().innerHTML='<div id="gate"><div class="box">'+
+    '<div class="lg">'+ESCUDO+'</div><h1>Estrella del Sur</h1><div class="s">Gestión de Futsal</div>'+
+    (msg?'<div class="err">'+esc(msg)+'</div>':'')+'<div id="msg"></div>'+
+    '<div class="f"><label>Email</label><input id="lgE" type="email" autocomplete="email" placeholder="tu@email.com"></div>'+
+    '<div class="f"><label>Contraseña</label><input id="lgP" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
+    '<button onclick="hacerLogin()">Entrar</button>'+
+    '<div class="swap">¿Todavía no tenés cuenta? <a onclick="vistaRegistro()">Registrate</a></div>'+
+    '</div></div>';
+  $('lgP').onkeydown=e=>{ if(e.key==='Enter')hacerLogin(); };
+  $('lgE').focus();
+}
+function vistaRegistro(){
+  root().innerHTML='<div id="gate"><div class="box">'+
+    '<div class="lg">'+ESCUDO+'</div><h1>Crear cuenta</h1><div class="s">Estrella del Sur</div>'+
+    '<div id="msg"></div>'+
+    '<div class="f"><label>Nombre y apellido</label><input id="rgN" placeholder="Juan Pérez"></div>'+
+    '<div class="f"><label>Email</label><input id="rgE" type="email" placeholder="tu@email.com"></div>'+
+    '<div class="f"><label>Contraseña (mínimo 6)</label><input id="rgP" type="password"></div>'+
+    '<button onclick="hacerRegistro()">Crear cuenta</button>'+
+    '<div class="swap">¿Ya tenés cuenta? <a onclick="vistaLogin()">Iniciar sesión</a></div>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:14px;text-align:center">Las cuentas nuevas entran como <b>Jugador</b>. Un dirigente te asigna el rol después.</div>'+
+    '</div></div>';
+}
+function msg(h,cls){ const m=$('msg'); if(m)m.innerHTML='<div class="'+(cls||'err')+'">'+esc(h)+'</div>'; }
+async function hacerLogin(){
+  const e=val('lgE'),p=val('lgP');
+  if(!e||!p) return msg('Completá email y contraseña');
+  msg('Entrando…','okm');
+  const {error}=await SB.auth.signInWithPassword({email:e,password:p});
+  if(error) return msg(traducir(error.message));
+  entrar();
+}
+async function hacerRegistro(){
+  const n=val('rgN'),e=val('rgE'),p=val('rgP');
+  if(!n||!e||!p) return msg('Completá todos los campos');
+  msg('Creando cuenta…','okm');
+  const {data,error}=await SB.auth.signUp({email:e,password:p,options:{data:{nombre:n}}});
+  if(error) return msg(traducir(error.message));
+  if(!data.session) return msg('Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.','okm');
+  entrar();
+}
+async function salir(){ await SB.auth.signOut(); YO=null; vistaLogin(); }
+
+/* ---------- FORMULARIO PÚBLICO DE ALTA ---------- */
+async function vistaAlta(token){
+  root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando…</div></div>';
+  const {data:cs,error}=await SB.from('categorias').select('*').order('orden');
+  if(error||!cs){ root().innerHTML='<div id="gate"><div class="box"><div class="lg">'+ESCUDO+'</div><div class="err">No se pudo conectar. Pedile el link de nuevo al club.</div></div></div>'; return; }
+  const opt=RAMAS.map(r=>{ const l=cs.filter(c=>(c.rama||'Otras')===r); return l.length?'<optgroup label="'+esc(r)+'">'+l.map(c=>'<option value="'+c.id+'">'+esc(c.nombre)+'</option>').join('')+'</optgroup>':''; }).join('');
+  root().innerHTML='<div id="pub">'+
+   '<div class="hd"><div class="lg">'+ESCUDO+'</div><div><h1 style="font-size:21px">Estrella del Sur</h1>'+
+   '<div class="mut" style="font-size:12.5px">Ficha del jugador · completala una sola vez</div></div></div>'+
+   '<div class="card"><div id="msg"></div>'+
+   '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="aN" autocomplete="name"></div>'+
+   '<div class="f"><label>DNI *</label><input id="aD" inputmode="numeric"></div></div>'+
+   '<div class="row"><div class="f"><label>Fecha de nacimiento *</label><input type="date" id="aF"></div>'+
+   '<div class="f"><label>Categoría *</label><select id="aC"><option value="">— elegir —</option>'+opt+'</select></div></div>'+
+   '<div class="row"><div class="f"><label>Posición</label><select id="aP">'+['Arquero','Cierre','Ala','Pivot'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+   '<div class="f"><label>Pie hábil</label><select id="aPi">'+['Derecho','Izquierdo','Ambos'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+   '<div class="f"><label>Dorsal que usás</label><input id="aDo" inputmode="numeric" placeholder="opcional"></div></div>'+
+   '<div class="row"><div class="f"><label>Tu teléfono *</label><input id="aT" inputmode="tel" placeholder="11-5555-5555"></div>'+
+   '<div class="f"><label>Contacto de emergencia *</label><input id="aE" placeholder="Nombre y teléfono"></div></div>'+
+   '<div class="f"><label>Algo que el club deba saber</label><textarea id="aO" rows="2" placeholder="Alergias, medicación, lesiones previas… (opcional)"></textarea></div>'+
+   '<button style="width:100%;padding:11px;margin-top:6px" onclick="enviarAlta(\''+esc(token)+'\',this)">Enviar mi ficha</button>'+
+   '<div class="mut" style="font-size:11.5px;margin-top:12px;text-align:center">Tus datos los recibe la dirigencia del club y quedan pendientes de aprobación.</div>'+
+   '</div></div>';
+}
+async function enviarAlta(token,btn){
+  const req=[['aN','el nombre'],['aD','el DNI'],['aF','la fecha de nacimiento'],['aC','la categoría'],['aT','el teléfono'],['aE','el contacto de emergencia']];
+  for(const [id,q] of req) if(!val(id)) return msg('Falta '+q);
+  const b=btn||{}; b.disabled=true; b.textContent='Enviando…';
+  const {error}=await SB.from('altas').insert({token,nombre:val('aN'),dni:val('aD'),nac:nn(val('aF')),
+    cat:val('aC'),pos:val('aP'),pie:val('aPi'),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
+  if(error){ b.disabled=false; b.textContent='Enviar mi ficha';
+    return msg(/row-level|check/i.test(error.message)?'El link no es válido o venció. Pedile uno nuevo al club.':traducir(error.message)); }
+  root().innerHTML='<div id="gate"><div class="box" style="text-align:center"><div class="lg">'+ESCUDO+'</div>'+
+    '<h1>¡Listo!</h1><div class="s">Estrella del Sur</div>'+
+    '<div class="okm" style="text-align:left">Tu ficha llegó a la dirigencia del club. Cuando la aprueben vas a aparecer en el plantel de tu categoría.</div>'+
+    '<div class="mut" style="font-size:12.5px">Ya podés cerrar esta página.</div></div></div>';
+}
+/* ============ SHELL ============ */
+const NAV=[
+ {v:'panel',      ic:'◈',t:'Panel',                r:['dirigente','dt','jugador']},
+ {v:'fixture',    ic:'▦',t:'Fixture y resultados', r:['dirigente','dt','jugador']},
+ {v:'tabla',      ic:'≡',t:'Tabla de posiciones',  r:['dirigente','dt','jugador']},
+ {v:'plantel',    ic:'☰',t:'Plantel',              r:['dirigente','dt','jugador']},
+ {v:'stats',      ic:'◔',t:'Estadísticas',         r:['dirigente','dt','jugador']},
+ {v:'disciplina', ic:'▲',t:'Disciplina',           r:['dirigente','dt','jugador']},
+ {v:'citaciones', ic:'✉',t:'Citaciones',           r:['dirigente','dt','jugador']},
+ {v:'zona',       ic:'◍',t:'Zona / Rivales',       r:['dirigente','dt']},
+ {v:'altas',      ic:'⊕',t:'Altas pendientes',     r:['dirigente']},
+ {v:'usuarios',   ic:'⚇',t:'Usuarios',             r:['dirigente']},
+ {v:'config',     ic:'⚙',t:'Configuración',        r:['dirigente']}
+];
+function pintarShell(){
+  if(esDT()&&YO.cat&&!F.cat) F.cat=YO.cat;
+  const ini=(YO.nombre||YO.email||'?').trim()[0].toUpperCase();
+  root().innerHTML='<div id="app"><nav>'+
+    '<div class="brand"><div class="star">'+ESCUDO+'</div><div><b>'+esc(DB.config.club||'Estrella del Sur')+'</b><small>Futsal · '+esc(DB.config.temporada||'')+'</small></div></div>'+
+    NAV.filter(n=>n.r.includes(YO.rol)).map(n=>'<a data-v="'+n.v+'"><span class="ic">'+n.ic+'</span>'+n.t+'<span class="badge" id="bdg_'+n.v+'" style="display:none"></span></a>').join('')+
+    '<div class="me"><div class="av">'+esc(ini)+'</div><div style="flex:1;min-width:0"><b>'+esc(YO.nombre||YO.email)+'</b>'+
+    '<span class="ro '+(esDir()?'dir':esDT()?'dt':'')+'">'+ROL[YO.rol]+(esDT()&&YO.cat?' · '+esc(cat(YO.cat).nombre):'')+'</span></div></div>'+
+    '<a onclick="salir()" style="color:var(--muted)"><span class="ic">⏻</span>Cerrar sesión</a>'+
+    '</nav><main id="main"></main></div>';
+  root().querySelectorAll('nav a[data-v]').forEach(a=>a.onclick=()=>{ V=a.dataset.v; render(); });
+}
+function render(){
+  SANC=calcularSanciones();
+  const vistas={panel:vPanel,fixture:vFixture,tabla:vTabla,plantel:vPlantel,stats:vStats,
+    disciplina:vDisc,citaciones:vCit,zona:vZona,altas:vAltas,usuarios:vUsuarios,config:vConfig};
+  const perm=NAV.find(n=>n.v===V);
+  if(!perm||!perm.r.includes(YO.rol)) V='panel';
+  root().querySelectorAll('nav a[data-v]').forEach(a=>a.classList.toggle('on',a.dataset.v===V));
+  const ns=suspendidos().filter(s=>s.jid).length, na=DB.altas.length;
+  bdg('disciplina',ns); bdg('panel',ns); bdg('altas',na);
+  $('main').innerHTML=(vistas[V]||vPanel)();
+  window.scrollTo(0,0);
+}
+function bdg(v,n){ const e=$('bdg_'+v); if(!e)return; e.style.display=n?'inline-block':'none'; e.textContent=n; }
+function modal(t,h,ancho){ $('modal').innerHTML='<h3>'+t+'<span class="x" onclick="cerrar()">×</span></h3>'+h; $('modal').style.maxWidth=(ancho||620)+'px'; $('mask').classList.add('on'); }
+function cerrar(){ $('mask').classList.remove('on'); }
+$('mask').onclick=e=>{ if(e.target.id==='mask')cerrar(); };
+function head(t,s,btns){ return '<div class="head"><div><h1>'+t+'</h1><div class="sub">'+s+'</div></div><div class="btns">'+(btns||'')+'</div></div>'; }
+function kpi(n,l,col){ return '<div class="kpi"><div class="n"'+(col?' style="color:'+col+'"':'')+'>'+n+'</div><div class="l">'+l+'</div></div>'; }
+function vacio(t,s){ return '<div class="empty"><span class="e">◌</span><b>'+t+'</b><div style="margin-top:4px;font-size:12.5px">'+(s||'')+'</div></div>'; }
+function optCats(sel,todas){
+  let h=todas?'<option value="">Todas las categorías</option>':'';
+  RAMAS.forEach(r=>{ const l=cats().filter(c=>(c.rama||'Otras')===r); if(!l.length)return;
+    h+='<optgroup label="'+esc(r)+'">'+l.map(c=>'<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+esc(c.nombre)+'</option>').join('')+'</optgroup>'; });
+  return h;
+}
+function optEqs(sel){ return '<option value="">— elegir —</option>'+DB.equipos.slice().sort((a,b)=>(b.propio?1:0)-(a.propio?1:0)).map(e=>'<option value="'+e.id+'"'+(e.id===sel?' selected':'')+'>'+esc(e.nombre)+(e.propio?' ★':'')+'</option>').join(''); }
+function barraCat(){
+  if(esDT()&&YO.cat) return '<div class="btns" style="margin-bottom:14px"><span class="pill">Categoría: <b style="color:var(--txt)">'+esc(cat(YO.cat).nombre)+'</b></span>'+
+    '<select style="max-width:210px" onchange="F.cat=this.value;render()">'+optCats(F.cat,true)+'</select></div>';
+  return '<div class="btns" style="margin-bottom:14px"><select style="max-width:240px" onchange="F.cat=this.value;render()">'+optCats(F.cat,true)+'</select></div>';
+}
+/* ============ PANEL ============ */
+function vPanel(){
+  const susp=suspendidos(), yo=propio().id;
+  const mi=miJugador();
+  if(esJug()) return panelJugador(mi);
+  const prox=DB.partidos.filter(p=>!p.jugado).sort((a,b)=>(a.fecha||'z').localeCompare(b.fecha||'z')).slice(0,6);
+  const tope=DB.config.topeAmarillas||5;
+  const riesgo=DB.jugadores.filter(j=>j.estado!=='baja'&&amarillasTotales(j.id)>0&&amarillasAcum(j.id)===tope-1);
+  const sinCit=prox.filter(p=>(p.local===yo||p.visitante===yo)&&!DB.citaciones.some(c=>c.pid===p.id));
+  const act=DB.jugadores.filter(j=>j.estado!=='baja');
+
+  let h=head(esc(DB.config.club),'Temporada '+esc(DB.config.temporada)+' · '+cats().length+' categorías · '+act.length+' jugadores');
+  h+='<div class="grid g4" style="margin-bottom:14px">'+kpi(act.length,'Jugadores')+
+     kpi(DB.partidos.filter(p=>p.jugado).length,'Partidos jugados')+
+     kpi(susp.length,'Suspendidos',susp.length?'var(--bad)':'')+
+     kpi(DB.stats.reduce((a,s)=>a+(+s.g||0),0),'Goles del club','var(--acc)')+'</div>';
+  if(esDir()&&DB.altas.length) h+='<div class="alert a-inf" style="margin-bottom:14px"><b>'+DB.altas.length+' ficha(s) de jugador esperando aprobación.</b> <a style="color:var(--acc);cursor:pointer;font-weight:700" onclick="V=\'altas\';render()">Ver ahora →</a></div>';
+
+  h+='<div class="grid g2"><div class="card"><h2>⚠ Alertas</h2>';
+  let n=0;
+  susp.forEach(s=>{ n++; h+='<div class="alert a-bad"><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> — '+esc(cat(s.cat).nombre)+(s.jid?'':' <span class="mut">('+esc(eq(s.eqid).nombre)+')</span>')+'<br><span class="mut" style="font-size:12px">'+esc(s.motivo)+' · le quedan '+s.rest+' fecha(s)</span></div>'; });
+  riesgo.forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> está a <b>una amarilla</b> de la suspensión <span class="mut">('+amarillasAcum(j.id)+'/'+tope+')</span></div>'; });
+  DB.jugadores.filter(j=>j.estado==='lesionado').forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> — lesionado <span class="mut" style="font-size:12px">'+esc(j.lesion||'sin detalle')+'</span></div>'; });
+  sinCit.forEach(p=>{ n++; h+='<div class="alert a-inf">Falta la citación de <b>'+esc(cat(p.cat).nombre)+'</b> vs '+esc(eq(p.local===yo?p.visitante:p.local).nombre)+' <span class="mut">('+fdate(p.fecha)+')</span></div>'; });
+  if(!n) h+='<div class="alert a-inf">✓ Todo en orden. Sin suspendidos y las citaciones al día.</div>';
+  h+='</div><div class="card"><h2>▦ Próximos partidos</h2>';
+  h+= prox.length? '<div class="tw"><table><tbody>'+prox.map(p=>{ const d=dias(p.fecha), mio=p.local===yo||p.visitante===yo;
+      return '<tr><td style="width:62px" class="mut">'+fdate(p.fecha)+'</td><td><b>'+esc(eq(p.local).nombre)+'</b> vs <b>'+esc(eq(p.visitante).nombre)+'</b><div class="mut" style="font-size:11.5px">'+esc(cat(p.cat).nombre)+' · fecha '+esc(p.fnro||'—')+'</div></td>'+
+      '<td class="num" style="width:100px">'+(d!==null?'<span class="tag '+(d<=2?'t-warn':'t-mut')+'">'+(d===0?'HOY':d<0?'vencido':'en '+d+' d')+'</span>':'')+(mio?'':' <span class="tag t-mut">zona</span>')+'</td></tr>'; }).join('')+'</tbody></table></div>'
+    : vacio('Sin partidos programados','Cargalos desde Fixture y resultados');
+  h+='</div></div>';
+  const gol=DB.jugadores.map(j=>({j,s:statsJug(j.id)})).filter(x=>x.s.g>0).sort((a,b)=>b.s.g-a.s.g).slice(0,8);
+  if(gol.length) h+='<div class="card"><h2>★ Goleadores del club</h2><div class="tw"><table><thead><tr><th style="width:32px">#</th><th>Jugador</th><th>Categoría</th><th class="num">PJ</th><th class="num">Goles</th><th class="num">Prom.</th></tr></thead><tbody>'+
+    gol.map((x,i)=>'<tr><td class="mut">'+(i+1)+'</td><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(cat(x.j.cat).nombre)+'</td><td class="num">'+x.s.pj+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num mut">'+(x.s.g/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
+  return h;
+}
+function panelJugador(mi){
+  let h=head('Hola, '+esc((YO.nombre||'').split(' ')[0]||''),esc(DB.config.club)+' · temporada '+esc(DB.config.temporada));
+  if(!mi) return h+'<div class="card"><div class="alert a-warn">Tu usuario todavía no está vinculado a una ficha del plantel. Pedile a un dirigente que te vincule desde <b>Usuarios</b>.</div></div>';
+  const st=estado(mi.id), s=statsJug(mi.id), tope=DB.config.topeAmarillas||5;
+  h+='<div class="card"><h2>Tu estado</h2><div class="btns" style="margin-bottom:12px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12.5px">'+esc(st.motivo)+'</span>':'')+'</div>'+
+     '<div class="grid g4">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(mi.id)+'/'+tope,'Amarillas')+'</div></div>';
+  const mias=DB.citaciones.filter(c=>(c.jids||[]).includes(mi.id)).map(c=>({c,p:DB.partidos.find(p=>p.id===c.pid)}))
+    .filter(x=>x.p&&!x.p.jugado).sort((a,b)=>(a.p.fecha||'').localeCompare(b.p.fecha||''));
+  h+='<div class="card"><h2>✉ Tus citaciones</h2>';
+  h+= mias.length? mias.map(x=>{ const yo=propio().id, riv=eq(x.p.local===yo?x.p.visitante:x.p.local).nombre;
+      const cf=(x.c.confirm||{})[mi.id]||'pendiente';
+      return '<div class="alert a-inf"><b>'+esc(cat(x.p.cat).nombre)+' vs '+esc(riv)+'</b> · '+fdate(x.p.fecha)+(x.p.hora?' '+esc(x.p.hora):'')+
+      '<div class="mut" style="font-size:12.5px;margin:4px 0 8px">'+(x.c.hora?'Encuentro '+esc(x.c.hora)+' hs':'')+(x.c.lugar?' en '+esc(x.c.lugar):'')+(x.c.indumentaria?' · '+esc(x.c.indumentaria):'')+(x.c.notas?'<br>'+esc(x.c.notas):'')+'</div>'+
+      '<div class="btns"><span class="mut" style="font-size:12px">Tu respuesta:</span>'+
+      '<button class="sm'+(cf==='si'?'':' gh')+'" onclick="confirmar(\''+x.c.id+'\',\'si\')">Voy</button>'+
+      '<button class="sm'+(cf==='no'?' dgr':' gh')+'" onclick="confirmar(\''+x.c.id+'\',\'no\')">No puedo</button>'+
+      (cf==='pendiente'?'<span class="tag t-warn">sin responder</span>':'')+'</div></div>'; }).join('')
+    : vacio('No tenés citaciones pendientes','Cuando el técnico arme la próxima convocatoria te va a aparecer acá.');
+  h+='</div>';
+  const T=tabla(mi.cat);
+  if(T.length) h+='<div class="card"><h2>≡ Tu categoría</h2><div class="tw"><table><thead><tr><th style="width:34px">#</th><th>Equipo</th><th class="num">PJ</th><th class="num">DIF</th><th class="num">PTS</th></tr></thead><tbody>'+
+    T.map((t,i)=>'<tr'+(t.id===propio().id?' style="background:rgba(206,20,23,.1)"':'')+'><td class="mut">'+(i+1)+'</td><td><b>'+esc(eq(t.id).nombre)+'</b></td><td class="num">'+t.pj+'</td><td class="num">'+(t.dif>0?'+':'')+t.dif+'</td><td class="num"><b>'+t.pts+'</b></td></tr>').join('')+'</tbody></table></div></div>';
+  return h;
+}
+async function confirmar(cid,resp){
+  const mi=miJugador(); if(!mi)return;
+  const c=DB.citaciones.find(x=>x.id===cid);
+  const conf={...(c.confirm||{})}; conf[mi.id]=resp;
+  const {error}=await SB.from('citaciones').update({confirm:conf}).eq('id',cid);
+  if(error) return toast(traducir(error.message),true);
+  toast(resp==='si'?'Confirmado. Nos vemos.':'Avisaste que no podés');
+  refrescar();
+}
+/* ============ FIXTURE ============ */
+function vFixture(){
+  const btn=(esDir()||esDT())?'<button onclick="mPartido()">+ Nuevo partido</button>':'';
+  let h=head('Fixture y resultados',esDir()?'Cargá partidos propios y de toda la zona':esDT()?'Podés editar los partidos de tu categoría':'Solo lectura',btn)+barraCat();
+  const ps=partsDe(F.cat).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
+  const yo=propio().id;
+  h+='<div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Cat.</th><th class="num">Fº</th><th style="text-align:right">Local</th><th class="num">Resultado</th><th>Visitante</th><th>Torneo</th><th></th></tr></thead><tbody>';
+  ps.forEach(p=>{
+    const mio=p.local===yo||p.visitante===yo, gl=+p.gl||0, gv=+p.gv||0;
+    let col='var(--muted)';
+    if(p.jugado&&mio){ const a=p.local===yo?gl:gv, b=p.local===yo?gv:gl; col=a>b?'var(--ok)':a<b?'var(--bad)':'var(--warn)'; }
+    const puede=puedeCat(p.cat);
+    h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
+      '<td class="mut" style="white-space:nowrap">'+fdate(p.fecha)+'</td><td class="mut">'+esc(cat(p.cat).nombre)+'</td>'+
+      '<td class="num mut">'+esc(p.fnro||'—')+'</td>'+
+      '<td style="text-align:right"><b>'+esc(eq(p.local).nombre)+'</b>'+(p.local===yo?' ★':'')+'</td>'+
+      '<td class="num scr" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
+      '<td><b>'+esc(eq(p.visitante).nombre)+'</b>'+(p.visitante===yo?' ★':'')+'</td>'+
+      '<td class="mut" style="font-size:12px">'+esc(p.torneo||'—')+'</td>'+
+      '<td class="btns" style="justify-content:flex-end">'+(mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
+      (puede?'<button class="gh sm" onclick="mPartido(\''+p.id+'\')">Editar</button>':'')+'</td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+function mPartido(id){
+  const p=DB.partidos.find(x=>x.id===id)||{cat:F.cat||(esDT()?YO.cat:(cats()[0]||{}).id),torneo:'Apertura',fecha:hoy(),jugado:false};
+  modal(id?'Editar partido':'Nuevo partido',
+  '<div class="row"><div class="f"><label>Categoría</label><select id="pCat"'+(esDT()?' disabled':'')+'>'+optCats(esDT()?YO.cat:p.cat)+'</select></div>'+
+  '<div class="f"><label>Torneo</label><input id="pTor" value="'+esc(p.torneo||'')+'" placeholder="Apertura"></div>'+
+  '<div class="f"><label>Nº de fecha</label><input id="pFnro" value="'+esc(p.fnro||'')+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Fecha</label><input type="date" id="pFecha" value="'+esc((p.fecha||'').slice(0,10))+'"></div>'+
+  '<div class="f"><label>Hora</label><input type="time" id="pHora" value="'+esc(p.hora||'')+'"></div>'+
+  '<div class="f"><label>Cancha</label><input id="pCancha" value="'+esc(p.cancha||'')+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Local</label><select id="pL">'+optEqs(p.local)+'</select></div>'+
+  '<div class="f"><label>Visitante</label><select id="pV">'+optEqs(p.visitante)+'</select></div></div>'+
+  '<div class="row"><div class="f"><label>Goles local</label><input type="number" min="0" id="pGL" value="'+(p.gl!=null?p.gl:'')+'"></div>'+
+  '<div class="f"><label>Goles visitante</label><input type="number" min="0" id="pGV" value="'+(p.gv!=null?p.gv:'')+'"></div>'+
+  '<div class="f"><label>Árbitro</label><input id="pArb" value="'+esc(p.arbitro||'')+'"></div></div>'+
+  '<label class="chk" style="margin:8px 0 14px"><input type="checkbox" id="pJug"'+(p.jugado?' checked':'')+'><span class="nm">Partido jugado</span><span class="mut" style="font-size:11.5px">Descuenta fechas de suspensión</span></label>'+
+  '<div class="btns"><button onclick="savePartido(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
+  (id&&esDir()?'<button class="dgr sm" style="margin-left:auto" onclick="delPartido(\''+id+'\')">Eliminar</button>':'')+'</div>');
+}
+async function savePartido(id){
+  if(!val('pL')||!val('pV')) return toast('Elegí local y visitante',true);
+  if(val('pL')===val('pV')) return toast('No pueden ser el mismo equipo',true);
+  const o=pOut({id:id||undefined,cat:esDT()?YO.cat:val('pCat'),torneo:val('pTor'),fnro:val('pFnro'),fecha:val('pFecha'),
+    hora:val('pHora'),cancha:val('pCancha'),local:val('pL'),visitante:val('pV'),
+    gl:val('pGL')===''?0:+val('pGL'),gv:val('pGV')===''?0:+val('pGV'),arbitro:val('pArb'),jugado:chk('pJug')});
+  if(!id) delete o.id;
+  if(!await guardar('partidos',o))return;
+  cerrar(); await refrescar(); toast('Partido guardado');
+}
+async function delPartido(id){
+  if(!confirm('¿Eliminar el partido y toda su planilla?'))return;
+  if(!await borrarFila('partidos',id))return;
+  cerrar(); await refrescar(); toast('Partido eliminado');
+}
+/* --- PLANILLA --- */
+function mPlanilla(pid){
+  const p=DB.partidos.find(x=>x.id===pid), js=jugsDe(p.cat), yo=propio().id;
+  if(!js.length) return toast('No hay jugadores en esa categoría',true);
+  let h='<div class="mut" style="margin-bottom:12px">'+esc(eq(p.local).nombre)+' vs '+esc(eq(p.visitante).nombre)+' · '+fdate(p.fecha)+' · '+esc(cat(p.cat).nombre)+'</div>'+
+   '<div class="tw"><table><thead><tr><th>Jugador</th><th class="num" title="Titular">T</th><th class="num">Min</th><th class="num">Gol</th><th class="num">Asis</th><th class="num">Am</th><th class="num" title="Roja">Rj</th><th class="num" title="Faltas">Fal</th><th class="num" title="Goles recibidos">GR</th></tr></thead><tbody>';
+  js.forEach(j=>{
+    const s=DB.stats.find(x=>x.pid===pid&&x.jid===j.id)||{}, st=estado(j.id);
+    h+='<tr><td><b>'+esc(j.nombre)+'</b> <span class="mut">'+(j.dorsal?'#'+esc(j.dorsal):'')+'</span>'+(st.ok?'':' <span class="tag t-bad" style="font-size:9px">'+esc(st.txt.split(' ')[0])+'</span>')+'</td>'+
+    '<td class="num"><input type="checkbox" style="width:16px" id="s_tit_'+j.id+'"'+(s.tit?' checked':'')+'></td>'+
+    ['min','g','a','am','ROJA','fal','gr'].map(k=> k==='ROJA'
+      ? '<td class="num"><input type="checkbox" style="width:16px" id="s_roja_'+j.id+'"'+(s.roja?' checked':'')+'></td>'
+      : '<td class="num"><input type="number" min="0" style="width:54px;padding:4px;text-align:center" id="s_'+k+'_'+j.id+'" value="'+(s[k]!=null?s[k]:'')+'"></td>').join('')+'</tr>';
+  });
+  h+='</tbody></table></div><div class="btns" style="margin-top:14px"><button onclick="savePlanilla(\''+pid+'\')">Guardar planilla</button><button class="gh" onclick="cerrar()">Cancelar</button></div>'+
+  '<div class="mut" style="font-size:11.5px;margin-top:10px">Las rojas generan la suspensión sola. Las amarillas se acumulan hasta el tope de '+(DB.config.topeAmarillas||5)+'.</div>';
+  modal('Planilla del partido',h,880);
+}
+async function savePlanilla(pid){
+  const p=DB.partidos.find(x=>x.id===pid), filas=[], borrar=[];
+  jugsDe(p.cat).forEach(j=>{
+    const g=k=>{ const e=$('s_'+k+'_'+j.id); return e?(e.type==='checkbox'?e.checked:(e.value===''?0:+e.value)):0; };
+    const o={pid,jid:j.id,tit:g('tit'),min:g('min'),g:g('g'),a:g('a'),am:g('am'),roja:g('roja'),fal:g('fal'),gr:g('gr')};
+    const prev=DB.stats.find(s=>s.pid===pid&&s.jid===j.id);
+    const vacia=!o.tit&&!o.min&&!o.g&&!o.a&&!o.am&&!o.roja&&!o.fal&&!o.gr;
+    if(vacia){ if(prev)borrar.push(prev.id); } else { if(prev)o.id=prev.id; filas.push(o); }
+  });
+  if(filas.length&&!await guardar('stats',filas,{onConflict:'pid,jid'}))return;
+  for(const id of borrar) await borrarFila('stats',id);
+  if(!p.jugado){ const {error}=await SB.from('partidos').update({jugado:true}).eq('id',pid); if(error)toast(traducir(error.message),true); }
+  cerrar(); await refrescar(); toast('Planilla guardada · disciplina actualizada');
+}
+/* ============ TABLA ============ */
+function vTabla(){
+  const torneos=[...new Set(DB.partidos.map(p=>p.torneo).filter(Boolean))];
+  let h=head('Tabla de posiciones','Se calcula sola con los resultados cargados');
+  h+='<div class="btns" style="margin-bottom:14px"><select style="max-width:230px" onchange="F.cat=this.value;render()">'+optCats(F.cat,true)+'</select>'+
+     '<select style="max-width:190px" onchange="F.torneo=this.value;render()"><option value="">Todos los torneos</option>'+torneos.map(t=>'<option'+(t===F.torneo?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></div>';
+  const T=tabla(F.cat,F.torneo);
+  if(!T.length) return h+vacio('Todavía no hay resultados','Marcá partidos como jugados para que se arme la tabla.');
+  h+='<div class="card"><div class="tw"><table><thead><tr><th style="width:34px">#</th><th>Equipo</th><th class="num">PJ</th><th class="num">G</th><th class="num">E</th><th class="num">P</th><th class="num">GF</th><th class="num">GC</th><th class="num">DIF</th><th class="num">PTS</th></tr></thead><tbody>'+
+  T.map((t,i)=>{ const mio=t.id===propio().id;
+    return '<tr'+(mio?' style="background:rgba(206,20,23,.09)"':'')+'><td><span class="tag '+(i===0?'t-ok':i<4?'t-inf':'t-mut')+'">'+(i+1)+'</span></td>'+
+    '<td><b>'+esc(eq(t.id).nombre)+'</b>'+(mio?' ★':'')+'</td><td class="num">'+t.pj+'</td><td class="num">'+t.g+'</td><td class="num">'+t.e+'</td><td class="num">'+t.p+'</td>'+
+    '<td class="num">'+t.gf+'</td><td class="num">'+t.gc+'</td><td class="num" style="color:'+(t.dif>0?'var(--ok)':t.dif<0?'var(--bad)':'var(--muted)')+'">'+(t.dif>0?'+':'')+t.dif+'</td>'+
+    '<td class="num"><b style="font-size:15px">'+t.pts+'</b></td></tr>'; }).join('')+'</tbody></table></div></div>';
+  return h;
+}
+/* ============ PLANTEL ============ */
+function vPlantel(){
+  const btn=(esDir()||esDT())?'<button onclick="mJugador()">+ Nuevo jugador</button>':'';
+  let h=head('Plantel',esDT()?'Podés editar los jugadores de tu categoría':esJug()?'Solo lectura':'Ficha del jugador y estado de habilitación',btn)+barraCat();
+  const js=DB.jugadores.filter(j=>!F.cat||j.cat===F.cat)
+    .sort((a,b)=>a.cat===b.cat?(+a.dorsal||99)-(+b.dorsal||99):cat(a.cat).nombre.localeCompare(cat(b.cat).nombre));
+  if(!js.length) return h+vacio('Sin jugadores','Cargalos a mano o pasales el link de alta desde Configuración para que se carguen solos.');
+  h+='<div class="card"><div class="tw"><table><thead><tr><th class="num" style="width:38px">#</th><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">Edad</th><th>Estado</th><th class="num">PJ</th><th class="num">G</th><th class="num">Am</th><th></th></tr></thead><tbody>';
+  js.forEach(j=>{
+    const st=estado(j.id), s=statsJug(j.id);
+    h+='<tr><td class="num mut">'+esc(j.dorsal||'—')+'</td><td><b>'+esc(j.nombre)+'</b>'+(j.dni?'<div class="mut" style="font-size:11px">DNI '+esc(j.dni)+'</div>':'')+'</td>'+
+    '<td class="mut">'+esc(cat(j.cat).nombre)+'</td><td class="mut">'+esc(j.pos||'—')+'</td><td class="num">'+edad(j.nac)+'</td>'+
+    '<td><span class="tag '+st.cls+'">'+st.txt+'</span></td><td class="num">'+s.pj+'</td><td class="num"><b>'+s.g+'</b></td><td class="num">'+amarillasAcum(j.id)+'</td>'+
+    '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mFicha(\''+j.id+'\')">Ficha</button>'+
+    (puedeCat(j.cat)?'<button class="gh sm" onclick="mJugador(\''+j.id+'\')">Editar</button>':'')+'</td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+function mJugador(id){
+  const j=DB.jugadores.find(x=>x.id===id)||{cat:F.cat||(esDT()?YO.cat:(cats()[0]||{}).id),estado:'activo',pos:'Ala',pie:'Derecho'};
+  modal(id?'Editar jugador':'Nuevo jugador',
+  '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="jN" value="'+esc(j.nombre||'')+'"></div>'+
+  '<div class="f"><label>Dorsal</label><input id="jD" value="'+esc(j.dorsal||'')+'"></div></div>'+
+  '<div class="row"><div class="f"><label>DNI</label><input id="jDNI" value="'+esc(j.dni||'')+'"></div>'+
+  '<div class="f"><label>Fecha de nacimiento</label><input type="date" id="jNac" value="'+esc((j.nac||'').slice(0,10))+'"></div>'+
+  '<div class="f"><label>Teléfono</label><input id="jTel" value="'+esc(j.tel||'')+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Categoría</label><select id="jC"'+(esDT()?' disabled':'')+'>'+optCats(esDT()?YO.cat:j.cat)+'</select></div>'+
+  '<div class="f"><label>Posición</label><select id="jP">'+['Arquero','Cierre','Ala','Pivot'].map(p=>'<option'+(p===j.pos?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
+  '<div class="f"><label>Pie hábil</label><select id="jPie">'+['Derecho','Izquierdo','Ambos'].map(p=>'<option'+(p===j.pie?' selected':'')+'>'+p+'</option>').join('')+'</select></div></div>'+
+  '<div class="row"><div class="f"><label>Nº carnet / pase</label><input id="jCar" value="'+esc(j.carnet||'')+'"></div>'+
+  '<div class="f"><label>Estado</label><select id="jE">'+['activo','lesionado','baja'].map(e=>'<option'+(e===j.estado?' selected':'')+'>'+e+'</option>').join('')+'</select></div>'+
+  '<div class="f"><label>Contacto de emergencia</label><input id="jEme" value="'+esc(j.emergencia||'')+'"></div></div>'+
+  '<div class="f"><label>Detalle de lesión (si aplica)</label><input id="jLes" value="'+esc(j.lesion||'')+'" placeholder="Esguince de tobillo · alta estimada 20/08"></div>'+
+  '<div class="btns" style="margin-top:6px"><button onclick="saveJugador(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
+  (id&&esDir()?'<button class="dgr sm" style="margin-left:auto" onclick="delJugador(\''+id+'\')">Eliminar</button>':'')+'</div>');
+}
+async function saveJugador(id){
+  if(!val('jN')) return toast('Falta el nombre',true);
+  const o={nombre:val('jN'),dorsal:val('jD'),dni:val('jDNI'),nac:nn(val('jNac')),tel:val('jTel'),
+    cat:esDT()?YO.cat:val('jC'),pos:val('jP'),pie:val('jPie'),carnet:val('jCar'),estado:val('jE'),
+    lesion:val('jLes'),emergencia:val('jEme')};
+  if(id)o.id=id;
+  if(!await guardar('jugadores',o))return;
+  cerrar(); await refrescar(); toast('Jugador guardado');
+}
+async function delJugador(id){
+  if(!confirm('¿Eliminar al jugador y todo su historial?'))return;
+  if(!await borrarFila('jugadores',id))return;
+  cerrar(); await refrescar(); toast('Jugador eliminado');
+}
+function mFicha(id){
+  const j=jug(id), s=statsJug(id), st=estado(id), tope=DB.config.topeAmarillas||5;
+  const hist=DB.stats.filter(x=>x.jid===id).map(x=>({s:x,p:DB.partidos.find(p=>p.id===x.pid)})).filter(x=>x.p&&x.p.jugado)
+    .sort((a,b)=>(b.p.fecha||'').localeCompare(a.p.fecha||''));
+  const sanc=SANC.filter(x=>x.jid===id);
+  let h='<div class="btns" style="margin-bottom:14px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12px">'+esc(st.motivo)+'</span>':'')+'</div>'+
+   '<div class="grid g4" style="margin-bottom:14px">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(id)+'/'+tope,'Amarillas')+'</div>'+
+   '<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
+   [['Categoría',cat(j.cat).nombre],['Posición',j.pos||'—'],['Edad',edad(j.nac)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
+    ['DNI',j.dni||'—'],['Teléfono',j.tel||'—'],['Carnet',j.carnet||'—'],['Emergencia',j.emergencia||'—'],['Minutos',s.min],['Titular en',s.tit+' partidos'],['Estado',j.estado||'activo']]
+   .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>';
+  if(j.pos==='Arquero') h+='<div class="grid g4" style="margin:14px 0">'+kpi(s.gr,'Goles recibidos')+kpi(s.vi,'Vallas invictas','var(--ok)')+kpi((s.gr/(s.pj||1)).toFixed(2),'Promedio')+'</div>';
+  if(sanc.length) h+='<h2 style="margin-top:14px">Historial disciplinario</h2><div class="tw"><table><tbody>'+
+    sanc.map(x=>'<tr><td>'+esc(x.motivo)+'<div class="mut" style="font-size:11px">'+fdate(x.desde)+(x.auto?' · automática':'')+'</div></td><td class="num"><span class="tag '+(x.rest>0?'t-bad':'t-mut')+'">'+(x.rest>0?x.rest+' fecha(s) pendientes':'cumplida')+'</span></td></tr>').join('')+'</tbody></table></div>';
+  if(hist.length) h+='<h2 style="margin-top:14px">Partido a partido</h2><div class="tw"><table><thead><tr><th>Fecha</th><th>Rival</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">Am</th><th class="num">Rj</th></tr></thead><tbody>'+
+    hist.map(x=>'<tr><td class="mut">'+fdate(x.p.fecha)+'</td><td>'+esc(eq(x.p.local===propio().id?x.p.visitante:x.p.local).nombre)+'</td><td class="num">'+(x.s.min||0)+'</td><td class="num"><b>'+(x.s.g||0)+'</b></td><td class="num">'+(x.s.a||0)+'</td><td class="num">'+(x.s.am||0)+'</td><td class="num">'+(x.s.roja?'1':'0')+'</td></tr>').join('')+'</tbody></table></div>';
+  modal(esc(j.nombre),h,780);
+}
+/* ============ ESTADÍSTICAS ============ */
+function vStats(){
+  let h=head('Estadísticas','Rankings y rendimiento del plantel')+barraCat();
+  const js=DB.jugadores.filter(j=>(!F.cat||j.cat===F.cat)&&j.estado!=='baja').map(j=>({j,s:statsJug(j.id,F.cat)}));
+  const con=js.filter(x=>x.s.pj>0);
+  if(!con.length) return h+vacio('Sin datos todavía','Cargá planillas de partido desde Fixture y resultados.');
+  const rank=(t,k)=>{ const l=con.filter(x=>x.s[k]>0).sort((a,b)=>b.s[k]-a.s[k]).slice(0,10); if(!l.length)return '';
+    const max=l[0].s[k];
+    return '<div class="card"><h2>'+t+'</h2>'+l.map((x,i)=>'<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span><span class="mut">'+(i+1)+'.</span> <b>'+esc(x.j.nombre)+'</b> <span class="mut">'+esc(cat(x.j.cat).nombre)+'</span></span><b>'+x.s[k]+'</b></div><div class="bar"><i style="width:'+(x.s[k]/max*100)+'%"></i></div></div>').join('')+'</div>'; };
+  h+='<div class="grid g2">'+rank('★ Goleadores','g')+rank('◎ Asistencias','a')+rank('⏱ Más minutos','min')+rank('▲ Más amonestados','am')+'</div>';
+  const arq=con.filter(x=>x.j.pos==='Arquero');
+  if(arq.length) h+='<div class="card"><h2>◇ Arqueros</h2><div class="tw"><table><thead><tr><th>Arquero</th><th class="num">PJ</th><th class="num">Goles recibidos</th><th class="num">Vallas invictas</th><th class="num">Promedio</th></tr></thead><tbody>'+
+    arq.sort((a,b)=>(a.s.gr/(a.s.pj||1))-(b.s.gr/(b.s.pj||1))).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.gr+'</td><td class="num" style="color:var(--ok)"><b>'+x.s.vi+'</b></td><td class="num">'+(x.s.gr/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
+  h+='<div class="card"><h2>Planilla completa</h2><div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">PJ</th><th class="num">Tit</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">G+A</th><th class="num">Am</th><th class="num">Rj</th><th class="num">Fal</th></tr></thead><tbody>'+
+    con.sort((a,b)=>(b.s.g+b.s.a)-(a.s.g+a.s.a)).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(cat(x.j.cat).nombre)+'</td><td class="mut">'+esc(x.j.pos||'—')+'</td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.tit+'</td><td class="num">'+x.s.min+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num">'+x.s.a+'</td><td class="num"><b>'+(x.s.g+x.s.a)+'</b></td><td class="num">'+x.s.am+'</td><td class="num">'+x.s.rj+'</td><td class="num mut">'+x.s.fal+'</td></tr>').join('')+'</tbody></table></div></div>';
+  return h;
+}
+/* ============ DISCIPLINA ============ */
+function vDisc(){
+  const btn=(esDir()||esDT())?'<button onclick="mSancion()">+ Cargar sanción</button>':'';
+  let h=head('Disciplina','Suspensiones propias y de los rivales · la habilitación la calcula el sistema',btn)+barraCat();
+  const act=suspendidos(F.cat), mias=act.filter(s=>s.jid), riv=act.filter(s=>!s.jid);
+  const tope=DB.config.topeAmarillas||5;
+  h+='<div class="grid g4" style="margin-bottom:14px">'+kpi(mias.length,'Propios suspendidos',mias.length?'var(--bad)':'')+
+     kpi(riv.length,'Rivales suspendidos')+
+     kpi(DB.jugadores.filter(j=>j.estado!=='baja'&&amarillasTotales(j.id)>0&&amarillasAcum(j.id)===tope-1).length,'En riesgo','var(--warn)')+
+     kpi(tope,'Tope de amarillas')+'</div>';
+  h+='<div class="card"><h2>🚫 Suspendidos del club</h2>';
+  h+= mias.length? '<div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th>Motivo</th><th class="num">Total</th><th class="num">Cumplidas</th><th class="num">Restan</th><th></th></tr></thead><tbody>'+
+    mias.map(s=>'<tr><td><b>'+esc(jug(s.jid).nombre)+'</b></td><td class="mut">'+esc(cat(s.cat).nombre)+'</td>'+
+    '<td>'+esc(s.motivo)+'<div class="mut" style="font-size:11px">desde '+fdate(s.desde)+(s.auto?' · automática':'')+'</div></td>'+
+    '<td class="num">'+s.total+'</td><td class="num">'+s.cumplidas+'</td><td class="num"><span class="tag t-bad">'+s.rest+'</span></td>'+
+    '<td class="btns" style="justify-content:flex-end">'+(s.auto?'<span class="mut" style="font-size:11px">calculada</span>':(puedeCat(s.cat)?'<button class="gh sm" onclick="mSancion(\''+s.id+'\')">Editar</button>':''))+'</td></tr>').join('')+'</tbody></table></div>'
+    : '<div class="alert a-inf">✓ Ningún jugador del club está suspendido.</div>';
+  h+='</div><div class="card"><h2>◍ Suspendidos de los rivales</h2><p class="mut" style="font-size:12.5px;margin-bottom:10px">Saber quién no juega en el rival es información que vale el partido.</p>';
+  h+= riv.length? '<div class="tw"><table><thead><tr><th>Jugador</th><th>Equipo</th><th>Cat.</th><th>Motivo</th><th class="num">Restan</th><th></th></tr></thead><tbody>'+
+    riv.map(s=>'<tr><td><b>'+esc(s.nombre)+'</b></td><td>'+esc(eq(s.eqid).nombre)+'</td><td class="mut">'+esc(cat(s.cat).nombre)+'</td><td>'+esc(s.motivo)+'</td>'+
+    '<td class="num"><span class="tag t-warn">'+s.rest+'</span></td><td class="btns" style="justify-content:flex-end">'+(puedeCat(s.cat)?'<button class="gh sm" onclick="mSancion(\''+s.id+'\')">Editar</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'
+    : vacio('Sin sanciones de rivales cargadas','Cargalas cuando salga el boletín del tribunal.');
+  h+='</div>';
+  const rg=DB.jugadores.filter(j=>j.estado!=='baja'&&(!F.cat||j.cat===F.cat)&&amarillasTotales(j.id)>0)
+    .sort((a,b)=>amarillasAcum(b.id)-amarillasAcum(a.id));
+  if(rg.length) h+='<div class="card"><h2>▲ Acumulación de amarillas</h2><div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th class="num">Vigentes</th><th class="num">Totales</th><th style="width:170px">Progreso</th><th>Situación</th></tr></thead><tbody>'+
+    rg.map(j=>{ const a=amarillasAcum(j.id);
+      return '<tr><td><b>'+esc(j.nombre)+'</b></td><td class="mut">'+esc(cat(j.cat).nombre)+'</td><td class="num"><b>'+a+'</b> <span class="mut">/'+tope+'</span></td><td class="num mut">'+amarillasTotales(j.id)+'</td>'+
+      '<td><div class="bar"><i style="width:'+Math.min(100,a/tope*100)+'%;background:'+(a>=tope-1?'var(--bad)':a>=tope-2?'var(--warn)':'var(--acc2)')+'"></i></div></td>'+
+      '<td>'+(a>=tope-1?'<span class="tag t-bad">a 1 de la suspensión</span>':a>=tope-2?'<span class="tag t-warn">atención</span>':'<span class="tag t-mut">normal</span>')+'</td></tr>'; }).join('')+'</tbody></table></div></div>';
+  const cum=SANC.filter(s=>s.rest<=0);
+  if(cum.length) h+='<div class="card"><h2>Historial de sanciones cumplidas</h2><div class="tw"><table><tbody>'+
+    cum.slice(-15).reverse().map(s=>'<tr><td><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> <span class="mut">'+esc(s.jid?'':eq(s.eqid).nombre)+'</span></td><td class="mut">'+esc(s.motivo)+'</td><td class="mut">'+fdate(s.desde)+'</td><td class="num"><span class="tag t-mut">cumplida</span></td>'+
+    '<td class="btns" style="justify-content:flex-end">'+(!s.auto&&esDir()?'<button class="gh sm" onclick="delSancion(\''+s.id+'\')">Borrar</button>':'')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  return h;
+}
+function mSancion(id){
+  const s=DB.sanciones.find(x=>x.id===id)||{cat:F.cat||(esDT()?YO.cat:(cats()[0]||{}).id),total:1,cumplidas:0,desde:hoy(),tipo:'tribunal'};
+  const props=DB.jugadores.filter(j=>j.estado!=='baja'&&(!esDT()||j.cat===YO.cat));
+  modal(id?'Editar sanción':'Cargar sanción',
+  '<div class="f"><label>¿A quién?</label><select id="sTipo" onchange="togSanc()">'+
+    '<option value="propio"'+(s.jid||!id?' selected':'')+'>Jugador del club</option>'+
+    '<option value="rival"'+(!s.jid&&id?' selected':'')+'>Jugador de otro equipo</option></select></div>'+
+  '<div id="boxP" class="f"><label>Jugador</label><select id="sJ"><option value="">— elegir —</option>'+props.map(j=>'<option value="'+j.id+'"'+(j.id===s.jid?' selected':'')+'>'+esc(j.nombre)+' · '+esc(cat(j.cat).nombre)+'</option>').join('')+'</select></div>'+
+  '<div id="boxR" style="display:none"><div class="row"><div class="f"><label>Nombre del jugador</label><input id="sNom" value="'+esc(s.nombre||'')+'"></div>'+
+   '<div class="f"><label>Equipo</label><select id="sEq">'+optEqs(s.eqid)+'</select></div></div></div>'+
+  '<div class="row"><div class="f"><label>Categoría</label><select id="sC"'+(esDT()?' disabled':'')+'>'+optCats(esDT()?YO.cat:s.cat)+'</select></div>'+
+  '<div class="f"><label>Fechas de suspensión</label><input type="number" min="1" id="sT" value="'+(s.total||1)+'"></div>'+
+  '<div class="f"><label>Ya cumplidas antes de cargarla</label><input type="number" min="0" id="sCu" value="'+(s.cumplidas||0)+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Motivo</label><input id="sM" value="'+esc(s.motivo||'')+'" placeholder="Expulsión por doble amarilla"></div>'+
+  '<div class="f"><label>Rige desde</label><input type="date" id="sD" value="'+esc((s.desde||hoy()).slice(0,10))+'"></div></div>'+
+  '<div class="mut" style="font-size:11.5px;margin-bottom:12px">Las fechas se descuentan solas a medida que se juegan partidos de esa categoría.</div>'+
+  '<div class="btns"><button onclick="saveSancion(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
+  (id?'<button class="dgr sm" style="margin-left:auto" onclick="delSancion(\''+id+'\')">Eliminar</button>':'')+'</div>');
+  togSanc();
+}
+function togSanc(){ const r=val('sTipo')==='rival'; $('boxP').style.display=r?'none':'block'; $('boxR').style.display=r?'block':'none'; }
+async function saveSancion(id){
+  const riv=val('sTipo')==='rival';
+  if(riv&&(!val('sNom')||!val('sEq'))) return toast('Falta nombre o equipo',true);
+  if(!riv&&!val('sJ')) return toast('Elegí un jugador',true);
+  const o={cat:esDT()?YO.cat:val('sC'),total:+val('sT')||1,cumplidas:+val('sCu')||0,
+    motivo:val('sM')||'Sanción del tribunal',desde:nn(val('sD')),tipo:'tribunal',activa:true};
+  if(riv){ o.nombre=val('sNom'); o.eqid=val('sEq'); o.jid=null; } else { o.jid=val('sJ'); o.nombre=null; o.eqid=null; }
+  if(id)o.id=id; else o.origen='man-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  if(!await guardar('sanciones',o))return;
+  cerrar(); await refrescar(); toast('Sanción guardada');
+}
+async function delSancion(id){
+  if(String(id).startsWith('auto-')) return toast('Esa sanción es automática: se borra editando la planilla',true);
+  if(!await borrarFila('sanciones',id))return;
+  cerrar(); await refrescar(); toast('Sanción eliminada');
+}
+/* ============ CITACIONES ============ */
+function vCit(){
+  const yo=propio().id;
+  const mios=DB.partidos.filter(p=>p.local===yo||p.visitante===yo).filter(p=>!F.cat||p.cat===F.cat)
+    .sort((a,b)=>(a.jugado?1:0)-(b.jugado?1:0)||(a.fecha||'z').localeCompare(b.fecha||'z'));
+  let h=head('Citaciones','El sistema bloquea solo a los que no pueden jugar')+barraCat();
+  if(!mios.length) return h+vacio('Sin partidos del club','Cargá un partido donde juegue Estrella del Sur.');
+  h+='<div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Cat.</th><th>Partido</th><th class="num">Citados</th><th class="num">Confirmados</th><th>Estado</th><th></th></tr></thead><tbody>';
+  mios.forEach(p=>{
+    const c=DB.citaciones.find(x=>x.pid===p.id), riv=eq(p.local===yo?p.visitante:p.local).nombre;
+    const cf=c?Object.values(c.confirm||{}).filter(v=>v==='si').length:0;
+    const no=c?Object.values(c.confirm||{}).filter(v=>v==='no').length:0;
+    h+='<tr><td class="mut" style="white-space:nowrap">'+fdate(p.fecha)+'</td><td class="mut">'+esc(cat(p.cat).nombre)+'</td>'+
+    '<td><b>vs '+esc(riv)+'</b> <span class="mut">'+(p.local===yo?'(L)':'(V)')+'</span></td>'+
+    '<td class="num">'+(c?(c.jids||[]).length:'—')+'</td>'+
+    '<td class="num">'+(c?'<span class="tag t-ok">'+cf+'</span>'+(no?' <span class="tag t-bad">'+no+'</span>':''):'—')+'</td>'+
+    '<td>'+(c?'<span class="tag t-ok">armada</span>':p.jugado?'<span class="tag t-mut">sin registro</span>':'<span class="tag t-warn">pendiente</span>')+'</td>'+
+    '<td class="btns" style="justify-content:flex-end">'+(c?'<button class="gh sm" onclick="verCit(\''+p.id+'\')">Ver</button>':'')+
+    (puedeCat(p.cat)?'<button class="'+(c?'gh ':'')+'sm" onclick="mCit(\''+p.id+'\')">'+(c?'Editar':'Armar')+'</button>':'')+'</td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+function mCit(pid){
+  const p=DB.partidos.find(x=>x.id===pid), yo=propio().id;
+  const c=DB.citaciones.find(x=>x.pid===pid)||{jids:[],hora:'',lugar:'',indumentaria:'',notas:''};
+  const js=jugsDe(p.cat), riv=eq(p.local===yo?p.visitante:p.local).nombre;
+  const bloq=js.filter(j=>!estado(j.id).ok), disp=js.filter(j=>estado(j.id).ok);
+  let h='<div class="alert a-inf" style="margin-bottom:14px"><b>'+esc(cat(p.cat).nombre)+'</b> · vs '+esc(riv)+' · '+fdate(p.fecha)+' '+esc(p.hora||'')+' · '+(p.local===yo?'Local':'Visitante')+(p.cancha?' · '+esc(p.cancha):'')+'</div>'+
+   '<div class="row"><div class="f"><label>Hora de encuentro</label><input type="time" id="cH" value="'+esc(c.hora||'')+'"></div>'+
+   '<div class="f"><label>Punto de encuentro</label><input id="cL" value="'+esc(c.lugar||'')+'" placeholder="Sede del club"></div>'+
+   '<div class="f"><label>Indumentaria</label><input id="cI" value="'+esc(c.indumentaria||'')+'" placeholder="Camiseta titular"></div></div>'+
+   '<div class="f"><label>Notas</label><input id="cN" value="'+esc(c.notas||'')+'" placeholder="Traer botella y canilleras"></div>'+
+   '<h2 style="margin-top:16px">Disponibles ('+disp.length+')</h2>';
+  h+= disp.length? disp.map(j=>{ const st=estado(j.id), sel=(c.jids||[]).includes(j.id);
+      return '<label class="chk'+(sel?' sel':'')+'"><input type="checkbox" id="c_'+j.id+'"'+(sel?' checked':'')+' onchange="this.closest(\'.chk\').classList.toggle(\'sel\',this.checked)">'+
+      '<span class="nm">'+(j.dorsal?'<span class="mut">#'+esc(j.dorsal)+'</span> ':'')+esc(j.nombre)+'</span>'+
+      '<span class="mut" style="font-size:11.5px">'+esc(j.pos||'')+'</span><span class="tag '+st.cls+'">'+st.txt+'</span></label>'; }).join('')
+    : '<div class="alert a-bad">No hay jugadores disponibles en esta categoría.</div>';
+  if(bloq.length) h+='<h2 style="margin-top:16px">No pueden ser citados ('+bloq.length+')</h2>'+
+    bloq.map(j=>{ const st=estado(j.id);
+      return '<label class="chk blk"><input type="checkbox" disabled><span class="nm">'+esc(j.nombre)+'</span><span class="mut" style="font-size:11.5px">'+esc(st.motivo)+'</span><span class="tag t-bad">'+st.txt+'</span></label>'; }).join('');
+  h+='<div class="btns" style="margin-top:16px"><button onclick="saveCit(\''+pid+'\')">Guardar citación</button><button class="gh" onclick="cerrar()">Cancelar</button></div>';
+  modal('Armar citación',h,700);
+}
+async function saveCit(pid){
+  const p=DB.partidos.find(x=>x.id===pid);
+  const jids=jugsDe(p.cat).filter(j=>{ const e=$('c_'+j.id); return e&&e.checked; }).map(j=>j.id);
+  if(!jids.length) return toast('No seleccionaste a nadie',true);
+  const prev=DB.citaciones.find(c=>c.pid===pid);
+  const o={pid,jids,hora:val('cH'),lugar:val('cL'),indumentaria:val('cI'),notas:val('cN'),confirm:(prev&&prev.confirm)||{}};
+  if(prev)o.id=prev.id;
+  if(!await guardar('citaciones',o,{onConflict:'pid'}))return;
+  cerrar(); await refrescar(); toast(jids.length+' jugadores citados');
+}
+function textoCit(pid){
+  const p=DB.partidos.find(x=>x.id===pid), c=DB.citaciones.find(x=>x.pid===pid), yo=propio().id;
+  const riv=eq(p.local===yo?p.visitante:p.local).nombre;
+  let t='⭐ CITACIÓN — '+(DB.config.club||'').toUpperCase()+'\n━━━━━━━━━━━━━━━━━━━━\n';
+  t+='📋 '+cat(p.cat).nombre+(p.torneo?' · '+p.torneo:'')+(p.fnro?' · Fecha '+p.fnro:'')+'\n';
+  t+='🆚 '+riv+'  ('+(p.local===yo?'LOCAL':'VISITANTE')+')\n';
+  t+='📅 '+fdate(p.fecha)+(p.hora?'  ⏰ '+p.hora+' hs':'')+'\n';
+  if(p.cancha) t+='📍 '+p.cancha+'\n';
+  t+='━━━━━━━━━━━━━━━━━━━━\n';
+  if(c.hora||c.lugar) t+='🚌 Encuentro: '+(c.hora?c.hora+' hs':'')+(c.lugar?' en '+c.lugar:'')+'\n';
+  if(c.indumentaria) t+='👕 '+c.indumentaria+'\n';
+  t+='\nCONVOCADOS ('+c.jids.length+'):\n';
+  c.jids.forEach((id,i)=>{ const j=jug(id); t+=(i+1)+'. '+(j.dorsal?'#'+j.dorsal+' ':'')+j.nombre+(j.pos?'  ('+j.pos+')':'')+'\n'; });
+  const sus=suspendidos(p.cat).filter(x=>x.jid);
+  if(sus.length){ t+='\n🚫 NO DISPONIBLES:\n'; sus.forEach(x=>{ t+='• '+jug(x.jid).nombre+' — '+x.motivo+' ('+x.rest+' fecha/s)\n'; }); }
+  if(c.notas) t+='\n📌 '+c.notas+'\n';
+  t+='\nConfirmar asistencia. ¡Vamos!';
+  return t;
+}
+function verCit(pid){
+  const c=DB.citaciones.find(x=>x.pid===pid);
+  const resp=(c.jids||[]).map(id=>({j:jug(id),r:(c.confirm||{})[id]||'pendiente'}));
+  modal('Citación','<pre class="out" id="ctxt">'+esc(textoCit(pid))+'</pre>'+
+   '<h2 style="margin-top:14px">Respuestas</h2><div class="tw"><table><tbody>'+
+   resp.map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="num"><span class="tag '+(x.r==='si'?'t-ok':x.r==='no'?'t-bad':'t-mut')+'">'+(x.r==='si'?'VA':x.r==='no'?'NO PUEDE':'sin responder')+'</span></td></tr>').join('')+'</tbody></table></div>'+
+   '<div class="btns" style="margin-top:14px"><button onclick="copiar()">Copiar para WhatsApp</button><button class="gh" onclick="imprimir(\''+pid+'\')">Imprimir planilla</button><button class="gh" onclick="cerrar()">Cerrar</button></div>',680);
+}
+function copiar(){ const t=$('ctxt').textContent;
+  navigator.clipboard.writeText(t).then(()=>toast('Copiado'),()=>{ const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); toast('Copiado'); }); }
+function imprimir(pid){
+  const p=DB.partidos.find(x=>x.id===pid), c=DB.citaciones.find(x=>x.pid===pid), yo=propio().id;
+  const riv=eq(p.local===yo?p.visitante:p.local).nombre, w=window.open('','_blank');
+  w.document.write('<html><head><meta charset="utf-8"><title>Citación</title><style>'+
+   'body{font-family:system-ui,-apple-system,sans-serif;padding:38px 44px;color:#111}'+
+   '.hd{display:flex;align-items:center;gap:18px;border-bottom:3px solid #ce1417;padding-bottom:14px;margin-bottom:20px}'+
+   '.hd svg{width:64px;height:74px}.hd h1{margin:0;font-size:24px;letter-spacing:-.5px}'+
+   '.hd .s{color:#666;font-size:13px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px}'+
+   '.meta{display:flex;gap:26px;flex-wrap:wrap;font-size:14px;margin-bottom:22px}'+
+   '.meta b{display:block;font-size:10.5px;color:#888;text-transform:uppercase;letter-spacing:.8px;font-weight:700}'+
+   'table{width:100%;border-collapse:collapse;margin-bottom:26px}'+
+   'th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:#888;border-bottom:2px solid #111;padding:7px 9px}'+
+   'td{padding:9px;border-bottom:1px solid #ddd;font-size:14px}'+
+   '.fm{margin-top:34px;display:flex;gap:60px}.fm div{flex:1;border-top:1px solid #111;padding-top:7px;font-size:11.5px;color:#666}'+
+   '.nt{background:#f6f6f6;border-left:3px solid #ce1417;padding:11px 14px;font-size:13px;margin-bottom:20px}</style></head><body>'+
+   '<div class="hd">'+ESCUDO+'<div><h1>'+esc(DB.config.club)+'</h1><div class="s">Citación oficial · '+esc(cat(p.cat).nombre)+'</div></div></div>'+
+   '<div class="meta">'+[['Rival',riv],['Condición',p.local===yo?'Local':'Visitante'],['Fecha',fdate(p.fecha)],['Hora',p.hora||'—'],
+    ['Cancha',p.cancha||'—'],['Torneo',(p.torneo||'—')+(p.fnro?' · Fecha '+p.fnro:'')],
+    ['Encuentro',(c.hora||'—')+(c.lugar?' · '+c.lugar:'')],['Indumentaria',c.indumentaria||'—']]
+   .map(x=>'<div><b>'+esc(x[0])+'</b>'+esc(x[1])+'</div>').join('')+'</div>'+
+   (c.notas?'<div class="nt"><b>Nota:</b> '+esc(c.notas)+'</div>':'')+
+   '<table><thead><tr><th style="width:34px">#</th><th style="width:46px">Dorsal</th><th>Jugador</th><th>Posición</th><th style="width:76px">DNI</th><th style="width:90px">Firma</th></tr></thead><tbody>'+
+   c.jids.map((id,i)=>{const j=jug(id);return '<tr><td>'+(i+1)+'</td><td>'+esc(j.dorsal||'')+'</td><td><b>'+esc(j.nombre)+'</b></td><td>'+esc(j.pos||'')+'</td><td>'+esc(j.dni||'')+'</td><td></td></tr>';}).join('')+
+   '</tbody></table><div class="fm"><div>Firma del entrenador</div><div>Firma del delegado</div></div></body></html>');
+  w.document.close(); setTimeout(()=>w.print(),250);
+}
+/* ============ ZONA ============ */
+function vZona(){
+  let h=head('Zona / Rivales','Los equipos con los que competís',esDir()?'<button onclick="mEquipo()">+ Nuevo equipo</button>':'');
+  if(!DB.equipos.length) return h+vacio('Sin equipos','Cargá tu club y los rivales de la zona.');
+  h+='<div class="grid g2">';
+  DB.equipos.forEach(e=>{
+    const T=tabla(F.cat).find(t=>t.id===e.id);
+    const ult=DB.partidos.filter(p=>p.jugado&&(p.local===e.id||p.visitante===e.id)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).slice(0,5);
+    const sus=suspendidos().filter(s=>s.eqid===e.id);
+    h+='<div class="card"><h2>'+(e.propio?'★ ':'')+esc(e.nombre)+(esDir()?'<button class="gh sm" style="margin-left:auto" onclick="mEquipo(\''+e.id+'\')">Editar</button>':'')+'</h2>';
+    if(T) h+='<div class="btns" style="margin-bottom:10px"><span class="pill">'+T.pj+' PJ</span><span class="pill">'+T.g+'G '+T.e+'E '+T.p+'P</span><span class="pill">'+T.gf+':'+T.gc+'</span><span class="pill" style="color:var(--acc)">'+T.pts+' pts</span></div>';
+    if(ult.length) h+='<div class="mut" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Últimos resultados</div><div class="btns" style="margin-bottom:10px">'+
+      ult.map(p=>{ const loc=p.local===e.id, a=loc?+p.gl:+p.gv, b=loc?+p.gv:+p.gl;
+        return '<span class="tag '+(a>b?'t-ok':a<b?'t-bad':'t-warn')+'">'+a+'-'+b+'</span>'; }).join('')+'</div>';
+    if(sus.length) h+='<div class="alert a-warn" style="font-size:12.5px"><b>Suspendidos:</b> '+sus.map(s=>esc(s.nombre)).join(', ')+'</div>';
+    if(e.notas) h+='<div class="mut" style="font-size:12.5px;border-left:2px solid var(--line);padding-left:10px;margin-top:8px">'+esc(e.notas)+'</div>';
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+function mEquipo(id){
+  const e=DB.equipos.find(x=>x.id===id)||{};
+  modal(id?'Editar equipo':'Nuevo equipo',
+  '<div class="f"><label>Nombre del equipo *</label><input id="eN" value="'+esc(e.nombre||'')+'"></div>'+
+  '<div class="f"><label>Notas de scouting</label><textarea id="eNo" rows="3" placeholder="Juegan con arquero-jugador desde el minuto 30.">'+esc(e.notas||'')+'</textarea></div>'+
+  '<label class="chk" style="margin-bottom:14px"><input type="checkbox" id="eP"'+(e.propio?' checked':'')+'><span class="nm">Es mi club</span></label>'+
+  '<div class="btns"><button onclick="saveEquipo(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
+  (id?'<button class="dgr sm" style="margin-left:auto" onclick="delEquipo(\''+id+'\')">Eliminar</button>':'')+'</div>');
+}
+async function saveEquipo(id){
+  if(!val('eN')) return toast('Falta el nombre',true);
+  const o={nombre:val('eN'),notas:val('eNo'),propio:chk('eP')};
+  if(id)o.id=id;
+  if(o.propio){ for(const x of DB.equipos) if(x.id!==id&&x.propio) await SB.from('equipos').update({propio:false}).eq('id',x.id); }
+  if(!await guardar('equipos',o))return;
+  cerrar(); await refrescar(); toast('Equipo guardado');
+}
+async function delEquipo(id){
+  if(DB.partidos.some(p=>p.local===id||p.visitante===id)) return toast('Tiene partidos cargados, no se puede borrar',true);
+  if(!await borrarFila('equipos',id))return;
+  cerrar(); await refrescar(); toast('Equipo eliminado');
+}
+/* ============ ALTAS PENDIENTES ============ */
+function vAltas(){
+  let h=head('Altas pendientes','Fichas que cargaron los jugadores desde el link','<button class="gh" onclick="verLink()">Ver link de alta</button>');
+  if(!DB.altas.length) return h+vacio('No hay fichas pendientes','Pasales el link de alta a los jugadores y las fichas van a aparecer acá.');
+  h+='<div class="card"><div class="tw"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Datos</th><th>Enviada</th><th></th></tr></thead><tbody>';
+  DB.altas.forEach(a=>{
+    const dup=DB.jugadores.find(j=>j.dni&&a.dni&&j.dni===a.dni);
+    h+='<tr><td><b>'+esc(a.nombre)+'</b><div class="mut" style="font-size:11px">DNI '+esc(a.dni||'—')+' · '+edad(a.nac)+' años</div>'+
+      (dup?'<span class="tag t-warn">ya existe con ese DNI</span>':'')+'</td>'+
+      '<td class="mut">'+esc(cat(a.cat).nombre)+'</td>'+
+      '<td class="mut" style="font-size:12px">'+esc(a.pos||'')+' · '+esc(a.pie||'')+(a.dorsal?' · #'+esc(a.dorsal):'')+'<br>'+esc(a.tel||'')+
+      (a.obs?'<div style="margin-top:4px;color:var(--warn)">⚠ '+esc(a.obs)+'</div>':'')+'</td>'+
+      '<td class="mut" style="font-size:12px">'+fdate(String(a.creada).slice(0,10))+'</td>'+
+      '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="verAlta(\''+a.id+'\')">Ver</button>'+
+      '<button class="sm" onclick="aprobarAlta(\''+a.id+'\')">Aprobar</button>'+
+      '<button class="dgr sm" onclick="rechazarAlta(\''+a.id+'\')">Rechazar</button></td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+function verAlta(id){
+  const a=DB.altas.find(x=>x.id===id);
+  modal(esc(a.nombre),'<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
+   [['DNI',a.dni],['Nacimiento',fdate(a.nac)+' ('+edad(a.nac)+' años)'],['Categoría',cat(a.cat).nombre],['Posición',a.pos],
+    ['Pie',a.pie],['Dorsal',a.dorsal||'—'],['Teléfono',a.tel],['Emergencia',a.emergencia]]
+   .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1]||'—')+'</b></div>').join('')+'</div></div>'+
+   (a.obs?'<div class="alert a-warn" style="margin-top:12px"><b>Observaciones:</b> '+esc(a.obs)+'</div>':'')+
+   '<div class="btns" style="margin-top:14px"><button onclick="aprobarAlta(\''+id+'\')">Aprobar y sumar al plantel</button>'+
+   '<button class="dgr gh" onclick="rechazarAlta(\''+id+'\')">Rechazar</button><button class="gh" onclick="cerrar()">Cerrar</button></div>');
+}
+async function aprobarAlta(id){
+  const a=DB.altas.find(x=>x.id===id);
+  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,pos:a.pos,pie:a.pie,
+    dorsal:a.dorsal,emergencia:a.emergencia,estado:'activo'}))return;
+  await SB.from('altas').update({estado:'aprobada'}).eq('id',id);
+  cerrar(); await refrescar(); toast(a.nombre+' sumado al plantel');
+}
+async function rechazarAlta(id){
+  if(!confirm('¿Rechazar esta ficha?'))return;
+  const {error}=await SB.from('altas').update({estado:'rechazada'}).eq('id',id);
+  if(error)return toast(traducir(error.message),true);
+  cerrar(); await refrescar(); toast('Ficha rechazada');
+}
+function verLink(){
+  const url=location.origin+location.pathname+'?alta='+DB.config.token;
+  modal('Link de alta de jugador',
+   '<p class="mut" style="font-size:13px;margin-bottom:12px">Mandales este link por WhatsApp. Lo abren del celular, completan la ficha y te llega acá para aprobar. No necesitan cuenta ni contraseña.</p>'+
+   '<div class="lnk" id="lk">'+esc(url)+'</div>'+
+   '<div class="btns" style="margin-top:12px"><button onclick="copiarLink()">Copiar link</button>'+
+   '<a class="pill" style="text-decoration:none;padding:8px 14px" target="_blank" href="https://wa.me/?text='+encodeURIComponent('Hola! Completá tu ficha de jugador de Estrella del Sur acá: '+url)+'">Enviar por WhatsApp</a>'+
+   '<button class="gh" onclick="cerrar()">Cerrar</button></div>'+
+   '<div class="mut" style="font-size:11.5px;margin-top:12px">Si el link se filtra y te llega spam, generá uno nuevo desde Configuración.</div>');
+}
+function copiarLink(){ const t=$('lk').textContent;
+  navigator.clipboard.writeText(t).then(()=>toast('Link copiado'),()=>toast('Copialo a mano',true)); }
+
+/* ============ USUARIOS ============ */
+function vUsuarios(){
+  let h=head('Usuarios','Quién entra a la app y qué puede hacer');
+  h+='<div class="card"><div class="alert a-inf" style="font-size:12.5px">Las cuentas nuevas se crean solas cuando la persona se registra, y entran como <b>Jugador</b>. Desde acá les asignás el rol y la categoría.</div>';
+  h+='<div class="tw"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Categoría</th><th>Ficha de jugador</th></tr></thead><tbody>';
+  DB.perfiles.forEach(p=>{
+    const vinc=DB.jugadores.find(j=>j.user_id===p.user_id);
+    h+='<tr><td><b>'+esc(p.nombre||'—')+'</b>'+(p.user_id===YO.user_id?' <span class="tag t-inf">vos</span>':'')+'</td>'+
+    '<td class="mut" style="font-size:12px">'+esc(p.email||'—')+'</td>'+
+    '<td><select style="max-width:135px" onchange="cambiarRol(\''+p.user_id+'\',this.value)">'+
+      ['dirigente','dt','jugador'].map(r=>'<option value="'+r+'"'+(r===p.rol?' selected':'')+'>'+ROL[r]+'</option>').join('')+'</select></td>'+
+    '<td>'+(p.rol==='dt'?'<select style="max-width:165px" onchange="cambiarCat(\''+p.user_id+'\',this.value)"><option value="">— sin asignar —</option>'+optCats(p.cat)+'</select>':'<span class="mut">—</span>')+'</td>'+
+    '<td>'+(p.rol==='jugador'?'<select style="max-width:185px" onchange="vincular(\''+p.user_id+'\',this.value)"><option value="">— sin vincular —</option>'+
+      DB.jugadores.filter(j=>!j.user_id||j.user_id===p.user_id).map(j=>'<option value="'+j.id+'"'+(vinc&&vinc.id===j.id?' selected':'')+'>'+esc(j.nombre)+' · '+esc(cat(j.cat).nombre)+'</option>').join('')+'</select>':'<span class="mut">—</span>')+'</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  h+='<div class="card"><h2>Qué puede hacer cada rol</h2><div class="tw"><table><thead><tr><th>Acción</th><th>Dirigente</th><th>Entrenador</th><th>Jugador</th></tr></thead><tbody>'+
+   [['Configuración del club, categorías y equipos','✓','—','—'],
+    ['Cargar resultados de toda la zona','✓','solo su categoría','—'],
+    ['Cargar sanciones del tribunal','✓','solo su categoría','—'],
+    ['Editar el plantel','✓','solo su categoría','—'],
+    ['Cargar la planilla del partido','✓','solo su categoría','—'],
+    ['Armar citaciones','✓','solo su categoría','—'],
+    ['Aprobar fichas nuevas','✓','—','—'],
+    ['Ver tabla, estadísticas y disciplina','✓','✓','✓'],
+    ['Confirmar asistencia a la citación','—','—','✓']]
+   .map(r=>'<tr><td>'+r[0]+'</td>'+r.slice(1).map(c=>'<td class="num '+(c==='✓'?'':'mut')+'" style="font-size:12px">'+c+'</td>').join('')+'</tr>').join('')+
+   '</tbody></table></div></div>';
+  return h;
+}
+async function cambiarRol(uid,rol){
+  if(uid===YO.user_id&&rol!=='dirigente'&&DB.perfiles.filter(p=>p.rol==='dirigente').length<2)
+    return toast('No podés sacarte dirigente: sos el único',true)||render();
+  const {error}=await SB.from('perfiles').update({rol,cat:rol==='dt'?null:null}).eq('user_id',uid);
+  if(error)return toast(traducir(error.message),true);
+  await refrescar(); toast('Rol actualizado');
+}
+async function cambiarCat(uid,c){
+  const {error}=await SB.from('perfiles').update({cat:nn(c)}).eq('user_id',uid);
+  if(error)return toast(traducir(error.message),true);
+  await refrescar(); toast('Categoría asignada');
+}
+async function vincular(uid,jid){
+  for(const j of DB.jugadores.filter(j=>j.user_id===uid)) await SB.from('jugadores').update({user_id:null}).eq('id',j.id);
+  if(jid){ const {error}=await SB.from('jugadores').update({user_id:uid}).eq('id',jid); if(error)return toast(traducir(error.message),true); }
+  await refrescar(); toast('Ficha vinculada');
+}
+/* ============ CONFIGURACIÓN ============ */
+function vConfig(){
+  const c=DB.config;
+  let h=head('Configuración','Club, categorías y reglas de disciplina');
+  h+='<div class="grid g2"><div class="card"><h2>Club y temporada</h2>'+
+  '<div class="row"><div class="f"><label>Nombre del club</label><input id="cfClub" value="'+esc(c.club||'')+'"></div>'+
+  '<div class="f"><label>Temporada</label><input id="cfTemp" value="'+esc(c.temporada||'')+'"></div></div>'+
+  '<h2 style="margin-top:14px">Reglas de disciplina</h2>'+
+  '<div class="row"><div class="f"><label>Amarillas para suspensión</label><input type="number" min="1" id="cfTope" value="'+(c.topeAmarillas||5)+'"></div>'+
+  '<div class="f"><label>Fechas por roja directa</label><input type="number" min="1" id="cfRoja" value="'+(c.fechasRoja||1)+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Puntos por victoria</label><input type="number" min="1" id="cfPV" value="'+(c.ptsVictoria||3)+'"></div>'+
+  '<div class="f"><label>Puntos por empate</label><input type="number" min="0" id="cfPE" value="'+(c.ptsEmpate||1)+'"></div></div>'+
+  '<div class="btns" style="margin-top:6px"><button onclick="saveConfig()">Guardar configuración</button></div></div>';
+  h+='<div class="card"><h2>Categorías<button class="sm" style="margin-left:auto" onclick="mCat()">+ Agregar</button></h2><div class="tw"><table><tbody>';
+  RAMAS.forEach(r=>{ const l=cats().filter(x=>(x.rama||'Otras')===r); if(!l.length)return;
+    h+='<tr><td colspan="3" class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;padding-top:12px">'+esc(r)+'</td></tr>';
+    h+=l.map(x=>'<tr><td><b>'+esc(x.nombre)+'</b>'+(x.dt?'<div class="mut" style="font-size:11.5px">DT: '+esc(x.dt)+'</div>':'')+'</td>'+
+      '<td class="num mut">'+jugsDe(x.id).length+' jug.</td><td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mCat(\''+x.id+'\')">Editar</button></td></tr>').join('');
+  });
+  h+='</tbody></table></div></div></div>';
+  const url=location.origin+location.pathname+'?alta='+c.token;
+  h+='<div class="card"><h2>🔗 Link de alta de jugadores</h2>'+
+   '<p class="mut" style="font-size:12.5px;margin-bottom:10px">Este es el link que le mandás a los jugadores para que carguen su propia ficha. No necesitan cuenta.</p>'+
+   '<div class="lnk">'+esc(url)+'</div>'+
+   '<div class="btns" style="margin-top:12px"><button onclick="verLink()">Compartir</button>'+
+   '<button class="gh" onclick="nuevoToken()">Generar link nuevo</button></div>'+
+   '<div class="mut" style="font-size:11.5px;margin-top:10px">Generar uno nuevo invalida el anterior.</div></div>';
+  h+='<div class="card"><h2>Copia de seguridad</h2>'+
+   '<p class="mut" style="font-size:12.5px;margin-bottom:12px">Los datos viven en Supabase y se respaldan solos, pero conviene bajar una copia cada tanto.</p>'+
+   '<div class="btns"><button onclick="exportar()">Descargar backup (.json)</button><button class="gh" onclick="exportarCSV()">Estadísticas (.csv)</button></div></div>';
+  return h;
+}
+async function saveConfig(){
+  const {error}=await SB.from('config').update({club:val('cfClub')||'Estrella del Sur',temporada:val('cfTemp'),
+    tope_amarillas:+val('cfTope')||5,fechas_roja:+val('cfRoja')||1,
+    pts_victoria:+val('cfPV')||3,pts_empate:+val('cfPE')||1}).eq('id',1);
+  if(error)return toast(traducir(error.message),true);
+  await refrescar(); pintarShell(); render(); toast('Configuración guardada');
+}
+function mCat(id){
+  const c=cats().find(x=>x.id===id)||{rama:'Masculino'};
+  modal(id?'Editar categoría':'Nueva categoría',
+  '<div class="row"><div class="f"><label>Nombre *</label><input id="kN" value="'+esc(c.nombre||'')+'" placeholder="4ta"></div>'+
+  '<div class="f"><label>Rama</label><select id="kR">'+RAMAS.map(r=>'<option'+(r===(c.rama||'Masculino')?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
+  '<div class="f"><label>Entrenador</label><input id="kD" value="'+esc(c.dt||'')+'"></div></div>'+
+  '<div class="btns"><button onclick="saveCat(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
+  (id?'<button class="dgr sm" style="margin-left:auto" onclick="delCat(\''+id+'\')">Eliminar</button>':'')+'</div>');
+}
+async function saveCat(id){
+  if(!val('kN')) return toast('Falta el nombre',true);
+  const o={nombre:val('kN'),rama:val('kR'),dt:val('kD'),orden:id?(cats().find(x=>x.id===id).orden||0):cats().length+1};
+  if(id)o.id=id;
+  if(!await guardar('categorias',o))return;
+  cerrar(); await refrescar(); toast('Categoría guardada');
+}
+async function delCat(id){
+  if(DB.jugadores.some(j=>j.cat===id)) return toast('Tiene jugadores asignados',true);
+  if(!await borrarFila('categorias',id))return;
+  cerrar(); await refrescar(); toast('Categoría eliminada');
+}
+async function nuevoToken(){
+  if(!confirm('El link anterior deja de funcionar. ¿Seguro?'))return;
+  const t=Array.from(crypto.getRandomValues(new Uint8Array(9))).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const {error}=await SB.from('config').update({token_alta:t}).eq('id',1);
+  if(error)return toast(traducir(error.message),true);
+  await refrescar(); toast('Link nuevo generado');
+}
+function exportar(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(DB,null,2)],{type:'application/json'}));
+  a.download='estrella-del-sur-'+hoy()+'.json'; a.click(); toast('Backup descargado');
+}
+function exportarCSV(){
+  const rows=[['Jugador','Categoria','Posicion','PJ','Titular','Minutos','Goles','Asistencias','Amarillas','Rojas','Faltas','Estado']];
+  DB.jugadores.forEach(j=>{ const s=statsJug(j.id);
+    rows.push([j.nombre,cat(j.cat).nombre,j.pos||'',s.pj,s.tit,s.min,s.g,s.a,s.am,s.rj,s.fal,estado(j.id).txt]); });
+  const csv='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='estadisticas-'+hoy()+'.csv'; a.click(); toast('CSV descargado');
+}
+/* ============ ARRANQUE ============ */
+iniciar();
+</script>
+</body>
+</html>
