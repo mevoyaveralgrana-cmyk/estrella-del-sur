@@ -181,7 +181,9 @@ const propio=()=>DB.equipos.find(e=>e.propio)||{id:'',nombre:DB.config.club||'Es
 const cats=()=>DB.categorias;
 const jugsDe=c=>DB.jugadores.filter(j=>j.cat===c&&j.estado!=='baja');
 const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
-const RAMAS=['Masculino','Femenino','Veteranos','Otras'];
+const RAMAS=['Masculino','Femenino','Otras'];
+// Cualquier rama desconocida cae en 'Otras' para que ninguna categoría se pierda de las listas
+const ramaDe=c=>RAMAS.includes(c&&c.rama)?c.rama:'Otras';
 
 /* permisos */
 const esPub =()=>!YO||YO.rol==='publico';
@@ -366,34 +368,35 @@ async function entrar(){
 /* ---------- LOGIN ---------- */
 function vistaLogin(msg){
   root().innerHTML='<div id="gate"><div class="box">'+
-    '<div class="lg">'+ESCUDO+'</div><h1>Estrella del Sur</h1><div class="s">Gestión de Futsal</div>'+
+    '<div class="lg">'+ESCUDO+'</div><h1>Estrella del Sur</h1><div class="s">Acceso del club</div>'+
     (msg?'<div class="err">'+esc(msg)+'</div>':'')+'<div id="msg"></div>'+
-    '<div class="f"><label>Email</label><input id="lgE" type="email" autocomplete="email" placeholder="tu@email.com"></div>'+
+    '<div class="mut" style="font-size:12px;margin-bottom:14px;text-align:center;line-height:1.5">Usuario único para técnicos y dirigentes.<br>Pedíselo a la dirigencia del club.</div>'+
+    '<div class="f"><label>Usuario (email)</label><input id="lgE" type="email" autocomplete="email" placeholder="club@estrelladelsur.com"></div>'+
     '<div class="f"><label>Contraseña</label><input id="lgP" type="password" autocomplete="current-password" placeholder="••••••••"></div>'+
     '<button onclick="hacerLogin()">Entrar</button>'+
-    '<div class="swap">¿Todavía no tenés cuenta? <a onclick="vistaRegistro()">Registrate</a></div>'+
-    '<div class="swap" style="margin-top:9px"><a onclick="entrarPublico()">← Volver a la vista pública</a></div>'+
+    '<div class="swap" style="margin-top:14px"><a onclick="entrarPublico()">← Volver a la vista pública</a></div>'+
+    '<div class="swap" style="margin-top:16px;font-size:11px;opacity:.55"><a onclick="vistaRegistro()">Crear el usuario del club</a> · solo la primera vez</div>'+
     '</div></div>';
   $('lgP').onkeydown=e=>{ if(e.key==='Enter')hacerLogin(); };
   $('lgE').focus();
 }
 function vistaRegistro(){
   root().innerHTML='<div id="gate"><div class="box">'+
-    '<div class="lg">'+ESCUDO+'</div><h1>Crear cuenta</h1><div class="s">Estrella del Sur</div>'+
+    '<div class="lg">'+ESCUDO+'</div><h1>Crear el usuario del club</h1><div class="s">Estrella del Sur</div>'+
     '<div id="msg"></div>'+
-    '<div class="f"><label>Nombre y apellido</label><input id="rgN" placeholder="Juan Pérez"></div>'+
-    '<div class="f"><label>Email</label><input id="rgE" type="email" placeholder="tu@email.com"></div>'+
+    '<div class="alert a-warn" style="font-size:12.5px;margin-bottom:14px">Esto se hace <b>una sola vez</b>. Este usuario y contraseña los van a compartir todos los técnicos y dirigentes.</div>'+
+    '<div class="f"><label>Nombre</label><input id="rgN" placeholder="Estrella del Sur" value="Estrella del Sur"></div>'+
+    '<div class="f"><label>Usuario (email)</label><input id="rgE" type="email" placeholder="club@estrelladelsur.com"></div>'+
     '<div class="f"><label>Contraseña (mínimo 6)</label><input id="rgP" type="password"></div>'+
     '<button onclick="hacerRegistro()">Crear cuenta</button>'+
-    '<div class="swap">¿Ya tenés cuenta? <a onclick="vistaLogin()">Iniciar sesión</a></div>'+
+    '<div class="swap">¿Ya está creado? <a onclick="vistaLogin()">Iniciar sesión</a></div>'+
     '<div class="swap" style="margin-top:9px"><a onclick="entrarPublico()">← Volver a la vista pública</a></div>'+
-    '<div class="mut" style="font-size:11.5px;margin-top:14px;text-align:center">Las cuentas nuevas entran como <b>Jugador</b>. Un dirigente te asigna el rol después.</div>'+
     '</div></div>';
 }
 function msg(h,cls){ const m=$('msg'); if(m)m.innerHTML='<div class="'+(cls||'err')+'">'+esc(h)+'</div>'; }
 async function hacerLogin(){
   const e=val('lgE'),p=val('lgP');
-  if(!e||!p) return msg('Completá email y contraseña');
+  if(!e||!p) return msg('Completá usuario y contraseña');
   msg('Entrando…','okm');
   const {error}=await SB.auth.signInWithPassword({email:e,password:p});
   if(error) return msg(traducir(error.message));
@@ -415,17 +418,16 @@ async function vistaAlta(token){
   root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando…</div></div>';
   const {data:cs,error}=await SB.from('categorias').select('*').order('orden');
   if(error||!cs){ root().innerHTML='<div id="gate"><div class="box"><div class="lg">'+ESCUDO+'</div><div class="err">No se pudo conectar. Pedile el link de nuevo al club.</div></div></div>'; return; }
-  const opt=RAMAS.map(r=>{ const l=cs.filter(c=>(c.rama||'Otras')===r); return l.length?'<optgroup label="'+esc(r)+'">'+l.map(c=>'<option value="'+c.id+'">'+esc(c.nombre)+'</option>').join('')+'</optgroup>':''; }).join('');
+  const opt=RAMAS.map(r=>{ const l=cs.filter(c=>ramaDe(c)===r); return l.length?'<optgroup label="'+esc(r)+'">'+l.map(c=>'<option value="'+c.id+'">'+esc(c.nombre)+'</option>').join('')+'</optgroup>':''; }).join('');
   root().innerHTML='<div id="pub">'+
    '<div class="hd"><div class="lg">'+ESCUDO+'</div><div><h1 style="font-size:21px">Estrella del Sur</h1>'+
    '<div class="mut" style="font-size:12.5px">Ficha del jugador · completala una sola vez</div></div></div>'+
    '<div class="card"><div id="msg"></div>'+
    '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="aN" autocomplete="name"></div>'+
    '<div class="f"><label>DNI *</label><input id="aD" inputmode="numeric"></div></div>'+
-   '<div class="row"><div class="f"><label>Fecha de nacimiento *</label><input type="date" id="aF"></div>'+
+   '<div class="row"><div class="f"><label>Fecha de nacimiento *</label><input type="date" id="aF" min="1930-01-01" max="'+hoy()+'"></div>'+
    '<div class="f"><label>Categoría *</label><select id="aC"><option value="">— elegir —</option>'+opt+'</select></div></div>'+
-   '<div class="row"><div class="f"><label>Posición</label><select id="aP">'+['Arquero','Cierre','Ala','Pivot'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
-   '<div class="f"><label>Pie hábil</label><select id="aPi">'+['Derecho','Izquierdo','Ambos'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+   '<div class="row"><div class="f"><label>Pie hábil</label><select id="aPi">'+['Derecho','Izquierdo','Ambos'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
    '<div class="f"><label>Dorsal que usás</label><input id="aDo" inputmode="numeric" placeholder="opcional"></div></div>'+
    '<div class="row"><div class="f"><label>Tu teléfono *</label><input id="aT" inputmode="tel" placeholder="11-5555-5555"></div>'+
    '<div class="f"><label>Contacto de emergencia *</label><input id="aE" placeholder="Nombre y teléfono"></div></div>'+
@@ -437,9 +439,11 @@ async function vistaAlta(token){
 async function enviarAlta(token,btn){
   const req=[['aN','el nombre'],['aD','el DNI'],['aF','la fecha de nacimiento'],['aC','la categoría'],['aT','el teléfono'],['aE','el contacto de emergencia']];
   for(const [id,q] of req) if(!val(id)) return msg('Falta '+q);
+  const e=edad(val('aF'));
+  if(!(e>=4&&e<=99)) return msg('Revisá la fecha de nacimiento: no parece correcta');
   const b=btn||{}; b.disabled=true; b.textContent='Enviando…';
   const {error}=await SB.from('altas').insert({token,nombre:val('aN'),dni:val('aD'),nac:nn(val('aF')),
-    cat:val('aC'),pos:val('aP'),pie:val('aPi'),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
+    cat:val('aC'),pie:val('aPi'),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
   if(error){ b.disabled=false; b.textContent='Enviar mi ficha';
     return msg(/row-level|check/i.test(error.message)?'El link no es válido o venció. Pedile uno nuevo al club.':traducir(error.message)); }
   root().innerHTML='<div id="gate"><div class="box" style="text-align:center"><div class="lg">'+ESCUDO+'</div>'+
@@ -499,7 +503,7 @@ function kpi(n,l,col){ return '<div class="kpi"><div class="n"'+(col?' style="co
 function vacio(t,s){ return '<div class="empty"><span class="e">◌</span><b>'+t+'</b><div style="margin-top:4px;font-size:12.5px">'+(s||'')+'</div></div>'; }
 function optCats(sel,todas){
   let h=todas?'<option value="">Todas las categorías</option>':'';
-  RAMAS.forEach(r=>{ const l=cats().filter(c=>(c.rama||'Otras')===r); if(!l.length)return;
+  RAMAS.forEach(r=>{ const l=cats().filter(c=>ramaDe(c)===r); if(!l.length)return;
     h+='<optgroup label="'+esc(r)+'">'+l.map(c=>'<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+esc(c.nombre)+'</option>').join('')+'</optgroup>'; });
   return h;
 }
@@ -711,7 +715,7 @@ function mJugador(id){
   '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="jN" value="'+esc(j.nombre||'')+'"></div>'+
   '<div class="f"><label>Dorsal</label><input id="jD" value="'+esc(j.dorsal||'')+'"></div></div>'+
   '<div class="row"><div class="f"><label>DNI</label><input id="jDNI" value="'+esc(j.dni||'')+'"></div>'+
-  '<div class="f"><label>Fecha de nacimiento</label><input type="date" id="jNac" value="'+esc((j.nac||'').slice(0,10))+'"></div>'+
+  '<div class="f"><label>Fecha de nacimiento</label><input type="date" id="jNac" min="1930-01-01" max="'+hoy()+'" value="'+esc((j.nac||'').slice(0,10))+'"></div>'+
   '<div class="f"><label>Teléfono</label><input id="jTel" value="'+esc(j.tel||'')+'"></div></div>'+
   '<div class="row"><div class="f"><label>Categoría</label><select id="jC"'+(esDT()?' disabled':'')+'>'+optCats(esDT()?YO.cat:j.cat)+'</select></div>'+
   '<div class="f"><label>Posición</label><select id="jP">'+['Arquero','Cierre','Ala','Pivot'].map(p=>'<option'+(p===j.pos?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
@@ -1007,7 +1011,7 @@ function vAltas(){
     h+='<tr><td><b>'+esc(a.nombre)+'</b><div class="mut" style="font-size:11px">DNI '+esc(a.dni||'—')+' · '+edad(a.nac)+' años</div>'+
       (dup?'<span class="tag t-warn">ya existe con ese DNI</span>':'')+'</td>'+
       '<td class="mut">'+esc(cat(a.cat).nombre)+'</td>'+
-      '<td class="mut" style="font-size:12px">'+esc(a.pos||'')+' · '+esc(a.pie||'')+(a.dorsal?' · #'+esc(a.dorsal):'')+'<br>'+esc(a.tel||'')+
+      '<td class="mut" style="font-size:12px">'+esc(a.pie||'')+(a.dorsal?' · #'+esc(a.dorsal):'')+'<br>'+esc(a.tel||'')+
       (a.obs?'<div style="margin-top:4px;color:var(--warn)">⚠ '+esc(a.obs)+'</div>':'')+'</td>'+
       '<td class="mut" style="font-size:12px">'+fdate(String(a.creada).slice(0,10))+'</td>'+
       '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="verAlta(\''+a.id+'\')">Ver</button>'+
@@ -1019,7 +1023,7 @@ function vAltas(){
 function verAlta(id){
   const a=DB.altas.find(x=>x.id===id);
   modal(esc(a.nombre),'<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
-   [['DNI',a.dni],['Nacimiento',fdate(a.nac)+' ('+edad(a.nac)+' años)'],['Categoría',cat(a.cat).nombre],['Posición',a.pos],
+   [['DNI',a.dni],['Nacimiento',fdate(a.nac)+' ('+edad(a.nac)+' años)'],['Categoría',cat(a.cat).nombre],
     ['Pie',a.pie],['Dorsal',a.dorsal||'—'],['Teléfono',a.tel],['Emergencia',a.emergencia]]
    .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1]||'—')+'</b></div>').join('')+'</div></div>'+
    (a.obs?'<div class="alert a-warn" style="margin-top:12px"><b>Observaciones:</b> '+esc(a.obs)+'</div>':'')+
@@ -1028,7 +1032,7 @@ function verAlta(id){
 }
 async function aprobarAlta(id){
   const a=DB.altas.find(x=>x.id===id);
-  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,pos:a.pos,pie:a.pie,
+  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,pie:a.pie,
     dorsal:a.dorsal,emergencia:a.emergencia,estado:'activo'}))return;
   await SB.from('altas').update({estado:'aprobada'}).eq('id',id);
   cerrar(); await refrescar(); toast(a.nombre+' sumado al plantel');
@@ -1113,7 +1117,7 @@ function vConfig(){
   '<div class="f"><label>Puntos por empate</label><input type="number" min="0" id="cfPE" value="'+(c.ptsEmpate||1)+'"></div></div>'+
   '<div class="btns" style="margin-top:6px"><button onclick="saveConfig()">Guardar configuración</button></div></div>';
   h+='<div class="card"><h2>Categorías<button class="sm" style="margin-left:auto" onclick="mCat()">+ Agregar</button></h2><div class="tw"><table><tbody>';
-  RAMAS.forEach(r=>{ const l=cats().filter(x=>(x.rama||'Otras')===r); if(!l.length)return;
+  RAMAS.forEach(r=>{ const l=cats().filter(x=>ramaDe(x)===r); if(!l.length)return;
     h+='<tr><td colspan="3" class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;padding-top:12px">'+esc(r)+'</td></tr>';
     h+=l.map(x=>'<tr><td><b>'+esc(x.nombre)+'</b>'+(x.dt?'<div class="mut" style="font-size:11.5px">DT: '+esc(x.dt)+'</div>':'')+'</td>'+
       '<td class="num mut">'+jugsDe(x.id).length+' jug.</td><td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mCat(\''+x.id+'\')">Editar</button></td></tr>').join('');
@@ -1142,7 +1146,7 @@ function mCat(id){
   const c=cats().find(x=>x.id===id)||{rama:'Masculino'};
   modal(id?'Editar categoría':'Nueva categoría',
   '<div class="row"><div class="f"><label>Nombre *</label><input id="kN" value="'+esc(c.nombre||'')+'" placeholder="4ta"></div>'+
-  '<div class="f"><label>Rama</label><select id="kR">'+RAMAS.map(r=>'<option'+(r===(c.rama||'Masculino')?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
+  '<div class="f"><label>Rama</label><select id="kR">'+RAMAS.map(r=>'<option'+(r===(c.id?ramaDe(c):'Masculino')?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
   '<div class="f"><label>Entrenador</label><input id="kD" value="'+esc(c.dt||'')+'"></div></div>'+
   '<div class="btns"><button onclick="saveCat(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
   (id?'<button class="dgr sm" style="margin-left:auto" onclick="delCat(\''+id+'\')">Eliminar</button>':'')+'</div>');
