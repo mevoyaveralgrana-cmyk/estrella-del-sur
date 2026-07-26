@@ -553,10 +553,11 @@ function vPanel(){
   if(esPub()) h+='<div class="alert a-inf" style="margin-bottom:14px">Estás viendo la información del club en modo público. '+
     '<b>¿Sos jugador?</b> Pedile el link de alta al club para cargar tu ficha. '+
     '<b>¿Sos técnico o dirigente?</b> Tocá <b>Entrar</b> abajo a la izquierda.</div>';
+  const Tgen=tabla(), posIdx=Tgen.findIndex(t=>t.id===yo);
   h+='<div class="grid g4" style="margin-bottom:14px">'+kpi(act.length,'Jugadores')+
      kpi(DB.partidos.filter(p=>p.jugado).length,'Partidos jugados')+
      kpi(susp.length,'Suspendidos',susp.length?'var(--bad)':'')+
-     kpi(DB.stats.reduce((a,s)=>a+(+s.g||0),0),'Goles del club','var(--acc)')+'</div>';
+     kpi(posIdx>=0?(posIdx+1)+'° de '+Tgen.length:'—','Posición general','var(--acc)')+'</div>';
   if(esDir()&&DB.altas.length) h+='<div class="alert a-inf" style="margin-bottom:14px"><b>'+DB.altas.length+' ficha(s) de jugador esperando aprobación.</b> <a style="color:var(--acc);cursor:pointer;font-weight:700" onclick="V=\'altas\';render()">Ver ahora →</a></div>';
 
   h+='<div class="grid g2"><div class="card"><h2>⚠ Alertas</h2>';
