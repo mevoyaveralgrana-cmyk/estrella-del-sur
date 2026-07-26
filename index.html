@@ -111,8 +111,9 @@ pre.out{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
 .bar i{display:block;height:100%;background:var(--acc2)}
 @media(max-width:860px){
   #app{flex-direction:column}
-  nav{width:100%;height:auto;position:static;display:flex;overflow-x:auto;padding:9px;gap:4px}
-  nav .brand{display:none}
+  nav{width:100%;height:auto;position:static;display:flex;overflow-x:auto;padding:9px;gap:4px;align-items:center}
+  nav .brand{flex-shrink:0;border-bottom:none;margin-bottom:0;padding:0 10px 0 2px}
+  nav .brand small{display:none}
   nav a{white-space:nowrap;margin:0}
   main{padding:15px}
 }
@@ -622,7 +623,7 @@ function vFixture(){
     if(p.jugado&&mio){ const a=p.local===yo?gl:gv, b=p.local===yo?gv:gl; col=a>b?'var(--ok)':a<b?'var(--bad)':'var(--warn)'; }
     const puede=puedeCat(p.cat);
     h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
-      '<td class="mut" style="white-space:nowrap">'+fdate(p.fecha)+'</td><td class="mut">'+esc(cat(p.cat).nombre)+'</td>'+
+      '<td class="mut" style="white-space:nowrap">'+fdate(p.fecha)+(p.hora?'<div style="font-size:11px">'+esc(p.hora)+' hs</div>':'')+(p.cancha?'<div style="font-size:11px">'+esc(p.cancha)+'</div>':'')+'</td><td class="mut">'+esc(cat(p.cat).nombre)+'</td>'+
       '<td class="num mut">'+esc(p.fnro||'—')+'</td>'+
       '<td style="text-align:right"><b>'+esc(eq(p.local).nombre)+'</b>'+(p.local===yo?' ★':'')+'</td>'+
       '<td class="num scr" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
