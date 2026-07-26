@@ -611,7 +611,8 @@ async function confirmar(cid,resp){
 }
 /* ============ FIXTURE ============ */
 function vFixture(){
-  const btn=(esDir()||esDT())?'<button onclick="mPartido()">+ Nuevo partido</button>':'';
+  const btn=((esDir()||esDT())?'<button onclick="mPartido()">+ Nuevo partido</button>':'')
+    +(esDir()?'<button class="gh" onclick="mFechaCompleta()">+ Cargar fecha completa</button>':'');
   let h=head('Fixture y resultados',esDir()?'Cargá partidos propios y de toda la zona':esDT()?'Podés editar los partidos de tu categoría':'Solo lectura',btn)+barraCat();
   const ps=partsDe(F.cat).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
@@ -666,6 +667,45 @@ async function delPartido(id){
   if(!confirm('¿Eliminar el partido y toda su planilla?'))return;
   if(!await borrarFila('partidos',id))return;
   cerrar(); await refrescar(); toast('Partido eliminado');
+}
+/* --- CARGA RÁPIDA DE TODA LA FECHA (mismo rival y cancha, distinto horario por categoría) --- */
+function mFechaCompleta(){
+  const ult=DB.partidos.slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).find(p=>p.cancha);
+  const h1='<div class="alert a-inf" style="margin-bottom:14px">Cargá una vez la fecha, el rival y la cancha — es la misma para toda la tira. Después tildá las categorías que juegan ese día y ponele el horario a cada una.</div>'+
+   '<div class="row"><div class="f"><label>Torneo</label><input id="fcTor" value="Apertura" placeholder="Apertura"></div>'+
+   '<div class="f"><label>Nº de fecha</label><input id="fcFnro"></div>'+
+   '<div class="f"><label>Fecha</label><input type="date" id="fcFecha" value="'+esc(hoy())+'"></div></div>'+
+   '<div class="row"><div class="f"><label>Rival</label><select id="fcRival"><option value="">— elegir —</option>'+
+     DB.equipos.filter(e=>!e.propio).map(e=>'<option value="'+e.id+'">'+esc(e.nombre)+'</option>').join('')+'</select></div>'+
+   '<div class="f"><label>Estrella juega de</label><select id="fcLV"><option value="local">Local</option><option value="visita">Visitante</option></select></div>'+
+   '<div class="f"><label>Cancha</label><input id="fcCancha" value="'+esc(ult?ult.cancha:'')+'"></div></div>'+
+   '<h2 style="margin-top:16px">Categorías que juegan ese día</h2>';
+  let h2='';
+  RAMAS.forEach(r=>{ const l=cats().filter(c=>ramaDe(c)===r); if(!l.length)return;
+    h2+='<div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin:10px 0 4px">'+esc(r)+'</div>';
+    h2+=l.map(c=>'<label class="chk"><input type="checkbox" id="fcOn_'+c.id+'"><span class="nm">'+esc(c.nombre)+'</span>'+
+      '<input type="time" id="fcHora_'+c.id+'" style="width:120px;padding:6px" onclick="event.stopPropagation()"></label>').join('');
+  });
+  const h3='<div class="btns" style="margin-top:16px"><button onclick="guardarFechaCompleta()">Guardar toda la fecha</button><button class="gh" onclick="cerrar()">Cancelar</button></div>';
+  modal('Cargar fecha completa',h1+h2+h3,680);
+}
+async function guardarFechaCompleta(){
+  const rival=val('fcRival'); if(!rival) return toast('Elegí el rival',true);
+  const yo=propio().id, esLocal=val('fcLV')==='local';
+  const filas=[];
+  cats().forEach(c=>{
+    const on=$('fcOn_'+c.id), h=$('fcHora_'+c.id);
+    if(on&&on.checked){
+      const o=pOut({cat:c.id,torneo:val('fcTor'),fnro:val('fcFnro'),fecha:val('fcFecha'),
+        hora:h?h.value:'',cancha:val('fcCancha'),local:esLocal?yo:rival,visitante:esLocal?rival:yo,
+        gl:0,gv:0,arbitro:'',jugado:false});
+      delete o.id;
+      filas.push(o);
+    }
+  });
+  if(!filas.length) return toast('Tildá al menos una categoría',true);
+  if(!await guardar('partidos',filas))return;
+  cerrar(); await refrescar(); toast(filas.length+' partidos cargados');
 }
 /* --- PLANILLA --- */
 function mPlanilla(pid){
