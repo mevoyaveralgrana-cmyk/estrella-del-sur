@@ -449,6 +449,7 @@ async function vistaAlta(token){
    '<div class="card"><div id="msg"></div>'+
    '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="aN" autocomplete="name"></div>'+
    '<div class="f"><label>DNI *</label><input id="aD" inputmode="numeric"></div></div>'+
+   '<div class="f"><label>Apodo</label><input id="aAp" placeholder="opcional"></div>'+
    '<div class="row"><div class="f"><label>Fecha de nacimiento *</label><input type="date" id="aF" min="1930-01-01" max="'+hoy()+'"></div>'+
    '<div class="f"><label>Categoría *</label><select id="aC"><option value="">— elegir —</option>'+opt+'</select></div></div>'+
    '<div class="mut" style="font-size:11px;margin-top:-8px">Si jugás en Reserva o en 1ra (o en las femeninas), da igual cuál elijas: vas a quedar disponible para citarte en las dos.</div>'+
@@ -466,7 +467,7 @@ async function enviarAlta(token,btn){
   const e=edad(val('aF'));
   if(!(e>=4&&e<=99)) return msg('Revisá la fecha de nacimiento: no parece correcta');
   const b=btn||{}; b.disabled=true; b.textContent='Enviando…';
-  const {error}=await SB.from('altas').insert({token,nombre:val('aN'),dni:val('aD'),nac:nn(val('aF')),
+  const {error}=await SB.from('altas').insert({token,nombre:val('aN'),apodo:val('aAp'),dni:val('aD'),nac:nn(val('aF')),
     cat:val('aC'),cat2:parCat(val('aC')),dorsal:val('aDo'),tel:val('aT'),emergencia:val('aE'),obs:val('aO')});
   if(error){ b.disabled=false; b.textContent='Enviar mi ficha';
     return msg(/row-level|check/i.test(error.message)?'El link no es válido o venció. Pedile uno nuevo al club.':traducir(error.message)); }
@@ -765,7 +766,7 @@ function vPlantel(){
   h+='<div class="card"><div class="tw"><table><thead><tr><th class="num" style="width:38px">#</th><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">Edad</th><th>Estado</th><th class="num">PJ</th><th class="num">G</th><th class="num">Am</th><th></th></tr></thead><tbody>';
   js.forEach(j=>{
     const st=estado(j.id,F.cat), s=statsJug(j.id,F.cat);
-    h+='<tr><td class="num mut">'+esc(j.dorsal||'—')+'</td><td><b>'+esc(j.nombre)+'</b>'+(j.dni?'<div class="mut" style="font-size:11px">DNI '+esc(j.dni)+'</div>':'')+'</td>'+
+    h+='<tr><td class="num mut">'+esc(j.dorsal||'—')+'</td><td><b>'+esc(j.nombre)+'</b>'+(j.apodo?' <span class="mut">"'+esc(j.apodo)+'"</span>':'')+(j.dni?'<div class="mut" style="font-size:11px">DNI '+esc(j.dni)+'</div>':'')+'</td>'+
     '<td class="mut">'+esc(catsTxt(j))+'</td><td class="mut">'+esc(j.pos||'—')+'</td><td class="num">'+edadDe(j)+'</td>'+
     '<td><span class="tag '+st.cls+'">'+st.txt+'</span></td><td class="num">'+s.pj+'</td><td class="num"><b>'+s.g+'</b></td><td class="num">'+amarillasAcum(j.id,F.cat)+'</td>'+
     '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mFicha(\''+j.id+'\')">Ficha</button>'+
@@ -778,6 +779,7 @@ function mJugador(id){
   modal(id?'Editar jugador':'Nuevo jugador',
   '<div class="row"><div class="f" style="grid-column:span 2"><label>Nombre y apellido *</label><input id="jN" value="'+esc(j.nombre||'')+'"></div>'+
   '<div class="f"><label>Dorsal</label><input id="jD" value="'+esc(j.dorsal||'')+'"></div></div>'+
+  '<div class="f"><label>Apodo</label><input id="jAp" value="'+esc(j.apodo||'')+'" placeholder="opcional"></div>'+
   '<div class="row"><div class="f"><label>DNI</label><input id="jDNI" value="'+esc(j.dni||'')+'"></div>'+
   '<div class="f"><label>Fecha de nacimiento</label><input type="date" id="jNac" min="1930-01-01" max="'+hoy()+'" value="'+esc((j.nac||'').slice(0,10))+'"></div>'+
   '<div class="f"><label>Teléfono</label><input id="jTel" value="'+esc(j.tel||'')+'"></div></div>'+
@@ -795,7 +797,7 @@ function mJugador(id){
 async function saveJugador(id){
   if(!val('jN')) return toast('Falta el nombre',true);
   const catSel=esDT()?YO.cat:val('jC');
-  const o={nombre:val('jN'),dorsal:val('jD'),dni:val('jDNI'),nac:nn(val('jNac')),tel:val('jTel'),
+  const o={nombre:val('jN'),apodo:val('jAp'),dorsal:val('jD'),dni:val('jDNI'),nac:nn(val('jNac')),tel:val('jTel'),
     cat:catSel,cat2:parCat(catSel),pos:val('jP'),pie:val('jPie'),carnet:val('jCar'),estado:val('jE'),
     lesion:val('jLes'),emergencia:val('jEme')};
   if(id)o.id=id;
@@ -815,7 +817,7 @@ function mFicha(id){
   let h='<div class="btns" style="margin-bottom:14px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12px">'+esc(st.motivo)+'</span>':'')+'</div>'+
    '<div class="grid g4" style="margin-bottom:14px">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(id)+'/'+tope,'Amarillas')+'</div>'+
    '<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
-   ([['Categoría',catsTxt(j)],['Posición',j.pos||'—'],['Edad',edadDe(j)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
+   ([['Categoría',catsTxt(j)],['Apodo',j.apodo||'—'],['Posición',j.pos||'—'],['Edad',edadDe(j)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
     ['Minutos',s.min],['Titular en',s.tit+' partidos'],['Estado',j.estado||'activo']]
     .concat(esPub()?[]:[['DNI',j.dni||'—'],['Teléfono',j.tel||'—'],['Carnet',j.carnet||'—'],['Emergencia',j.emergencia||'—']]))
    .map(x=>'<div><div class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">'+x[0]+'</div><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>';
@@ -824,7 +826,7 @@ function mFicha(id){
     sanc.map(x=>'<tr><td>'+esc(x.motivo)+'<div class="mut" style="font-size:11px">'+fdate(x.desde)+(x.auto?' · automática':'')+'</div></td><td class="num"><span class="tag '+(x.rest>0?'t-bad':'t-mut')+'">'+(x.rest>0?x.rest+' fecha(s) pendientes':'cumplida')+'</span></td></tr>').join('')+'</tbody></table></div>';
   if(hist.length) h+='<h2 style="margin-top:14px">Partido a partido</h2><div class="tw"><table><thead><tr><th>Fecha</th><th>Rival</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">Am</th><th class="num">Rj</th></tr></thead><tbody>'+
     hist.map(x=>'<tr><td class="mut">'+fdate(x.p.fecha)+'</td><td>'+esc(eq(x.p.local===propio().id?x.p.visitante:x.p.local).nombre)+'</td><td class="num">'+(x.s.min||0)+'</td><td class="num"><b>'+(x.s.g||0)+'</b></td><td class="num">'+(x.s.a||0)+'</td><td class="num">'+(x.s.am||0)+'</td><td class="num">'+(x.s.roja?'1':'0')+'</td></tr>').join('')+'</tbody></table></div>';
-  modal(esc(j.nombre),h,780);
+  modal(esc(j.nombre)+(j.apodo?' <span class="mut" style="font-size:13px;font-weight:400">"'+esc(j.apodo)+'"</span>':''),h,780);
 }
 /* ============ ESTADÍSTICAS ============ */
 function vStats(){
@@ -951,7 +953,7 @@ function mCit(pid){
    '<h2 style="margin-top:16px">Disponibles ('+disp.length+')</h2>';
   h+= disp.length? disp.map(j=>{ const st=estado(j.id,p.cat), sel=(c.jids||[]).includes(j.id);
       return '<label class="chk'+(sel?' sel':'')+'"><input type="checkbox" id="c_'+j.id+'"'+(sel?' checked':'')+' onchange="this.closest(\'.chk\').classList.toggle(\'sel\',this.checked)">'+
-      '<span class="nm">'+(j.dorsal?'<span class="mut">#'+esc(j.dorsal)+'</span> ':'')+esc(j.nombre)+'</span>'+
+      '<span class="nm">'+(j.dorsal?'<span class="mut">#'+esc(j.dorsal)+'</span> ':'')+esc(j.nombre)+(j.apodo?' <span class="mut">"'+esc(j.apodo)+'"</span>':'')+'</span>'+
       '<span class="mut" style="font-size:11.5px">'+esc(j.pos||'')+'</span><span class="tag '+st.cls+'">'+st.txt+'</span></label>'; }).join('')
     : '<div class="alert a-bad">No hay jugadores disponibles en esta categoría.</div>';
   if(bloq.length) h+='<h2 style="margin-top:16px">No pueden ser citados ('+bloq.length+')</h2>'+
@@ -1074,7 +1076,7 @@ function vAltas(){
   h+='<div class="card"><div class="tw"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Datos</th><th>Enviada</th><th></th></tr></thead><tbody>';
   DB.altas.forEach(a=>{
     const dup=DB.jugadores.find(j=>j.dni&&a.dni&&j.dni===a.dni);
-    h+='<tr><td><b>'+esc(a.nombre)+'</b><div class="mut" style="font-size:11px">DNI '+esc(a.dni||'—')+' · '+edad(a.nac)+' años</div>'+
+    h+='<tr><td><b>'+esc(a.nombre)+'</b>'+(a.apodo?' <span class="mut">"'+esc(a.apodo)+'"</span>':'')+'<div class="mut" style="font-size:11px">DNI '+esc(a.dni||'—')+' · '+edad(a.nac)+' años</div>'+
       (dup?'<span class="tag t-warn">ya existe con ese DNI</span>':'')+'</td>'+
       '<td class="mut">'+esc(cat(a.cat).nombre)+'</td>'+
       '<td class="mut" style="font-size:12px">'+(a.dorsal?'#'+esc(a.dorsal)+'<br>':'')+esc(a.tel||'')+
@@ -1098,7 +1100,7 @@ function verAlta(id){
 }
 async function aprobarAlta(id){
   const a=DB.altas.find(x=>x.id===id);
-  if(!await guardar('jugadores',{nombre:a.nombre,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,cat2:a.cat2||parCat(a.cat),
+  if(!await guardar('jugadores',{nombre:a.nombre,apodo:a.apodo,dni:a.dni,nac:a.nac,tel:a.tel,cat:a.cat,cat2:a.cat2||parCat(a.cat),
     dorsal:a.dorsal,emergencia:a.emergencia,estado:'activo'}))return;
   await SB.from('altas').update({estado:'aprobada'}).eq('id',id);
   cerrar(); await refrescar(); toast(a.nombre+' sumado al plantel');
@@ -1242,9 +1244,9 @@ function exportar(){
   a.download='estrella-del-sur-'+hoy()+'.json'; a.click(); toast('Backup descargado');
 }
 function exportarCSV(){
-  const rows=[['Jugador','Categoria','Posicion','PJ','Titular','Minutos','Goles','Asistencias','Amarillas','Rojas','Faltas','Estado']];
+  const rows=[['Jugador','Apodo','Categoria','Posicion','PJ','Titular','Minutos','Goles','Asistencias','Amarillas','Rojas','Faltas','Estado']];
   DB.jugadores.forEach(j=>{ const s=statsJug(j.id);
-    rows.push([j.nombre,catsTxt(j),j.pos||'',s.pj,s.tit,s.min,s.g,s.a,s.am,s.rj,s.fal,estado(j.id).txt]); });
+    rows.push([j.nombre,j.apodo||'',catsTxt(j),j.pos||'',s.pj,s.tit,s.min,s.g,s.a,s.am,s.rj,s.fal,estado(j.id).txt]); });
   const csv='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='estadisticas-'+hoy()+'.csv'; a.click(); toast('CSV descargado');
