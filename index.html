@@ -946,7 +946,7 @@ async function vistaVivoPublico(pid){
   const CATN=Object.fromEntries((ca.data||[]).map(c=>[c.id,c.nombre]));
   const EQN=Object.fromEntries((eqs.data||[]).map(e=>[e.id,e.nombre]));
   const JN=Object.fromEntries((ju.data||[]).map(j=>[j.id,j.nombre]));
-  let p=pa.data;
+  let p=pIn(pa.data);
   function pintar(){
     const seg=relojSeg(p);
     let h='<div id="pub" style="max-width:480px"><div class="hd"><div class="lg">'+ESCUDO+'</div><div><h1 style="font-size:20px">'+esc(CATN[p.cat]||'')+'</h1>'+
@@ -970,7 +970,7 @@ async function vistaVivoPublico(pid){
   const tick=setInterval(()=>{ if(!p.jugado) pintar(); },1000);
   const poll=setInterval(async()=>{
     const r=await SB.from('partidos').select('*').eq('id',pid).maybeSingle();
-    if(r.data){ p=r.data; pintar(); if(p.jugado){ clearInterval(poll); clearInterval(tick); } }
+    if(r.data){ p=pIn(r.data); pintar(); if(p.jugado){ clearInterval(poll); clearInterval(tick); } }
   },4000);
 }
 /* ============ TABLA ============ */
