@@ -164,7 +164,7 @@ const CFG = {
 /* ============================================================ */
 const ESCUDO = `<svg viewBox="0 0 466 538" xmlns="http://www.w3.org/2000/svg"><path d="M6,86 C82,104 176,94 233,8 C290,94 384,104 460,86 C460,300 378,472 233,532 C88,472 6,300 6,86 Z" fill="#fff" stroke="#000" stroke-width="17" stroke-linejoin="round"/><path d="M48,146 L145,133 L233,478 C160,415 88,290 48,146 Z" fill="#ce1417"/><path d="M418,146 L321,133 L233,478 C306,415 378,290 418,146 Z" fill="#ce1417"/><path d="M233,88 L248,131 L294,132 L258,160 L271,204 L233,178 L195,204 L208,160 L172,132 L218,131 Z" fill="#ce1417"/></svg>`;
 /* ============ CLIENTE Y ESTADO ============ */
-let SB=null, YO=null, V='panel', F={cat:'',torneo:''}, SANC=[];
+let SB=null, YO=null, V='panel', F={cat:'',torneo:'',vivoId:null}, SANC=[], VIVO_TIMER=null;
 let DB={config:{},categorias:[],equipos:[],jugadores:[],partidos:[],stats:[],sanciones:[],citaciones:[],altas:[],perfiles:[]};
 
 const $=id=>document.getElementById(id);
@@ -363,6 +363,7 @@ async function iniciar(){
   }
   SB=window.supabase.createClient(CFG.url,CFG.key);
   if(PARAMS.get('alta')) return vistaAlta(PARAMS.get('alta'));
+  if(PARAMS.get('vivo')) return vistaVivoPublico(PARAMS.get('vivo'));
   const {data}=await SB.auth.getSession();
   SB.auth.onAuthStateChange((ev)=>{ if(ev==='SIGNED_OUT'&&YO&&YO.rol!=='publico'){ YO=null; entrarPublico(); } });
   if(data.session) return entrar();
@@ -509,6 +510,9 @@ function pintarShell(){
 }
 function render(){
   SANC=calcularSanciones();
+  if(V!=='vivo'&&VIVO_TIMER){ clearInterval(VIVO_TIMER); VIVO_TIMER=null; }
+  if(V==='vivo'){ root().querySelectorAll('nav a[data-v]').forEach(a=>a.classList.remove('on'));
+    $('main').innerHTML=vPartidoVivo(F.vivoId); window.scrollTo(0,0); return; }
   const vistas={panel:vPanel,fixture:vFixture,tabla:vTabla,plantel:vPlantel,stats:vStats,
     disciplina:vDisc,citaciones:vCit,zona:vZona,altas:vAltas,usuarios:vUsuarios,config:vConfig};
   const perm=NAV.find(n=>n.v===V);
@@ -550,6 +554,7 @@ function vPanel(){
   const act=DB.jugadores.filter(j=>j.estado!=='baja');
 
   let h=head(esc(DB.config.club),'Temporada '+esc(DB.config.temporada)+' · '+cats().length+' categorías · '+act.length+' jugadores');
+  h+=bannerVivo();
   if(esPub()) h+='<div class="alert a-inf" style="margin-bottom:14px">Estás viendo la información del club en modo público. '+
     '<b>¿Sos jugador?</b> Pedile el link de alta al club para cargar tu ficha. '+
     '<b>¿Sos técnico o dirigente?</b> Tocá <b>Entrar</b> abajo a la izquierda.</div>';
@@ -578,8 +583,16 @@ function vPanel(){
     gol.map((x,i)=>'<tr><td class="mut">'+(i+1)+'</td><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(cat(x.j.cat).nombre)+'</td><td class="num">'+x.s.pj+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num mut">'+(x.s.g/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
   return h;
 }
+function bannerVivo(){
+  const en=DB.partidos.filter(p=>p.en_vivo&&!p.jugado);
+  if(!en.length) return '';
+  return en.map(p=>'<div class="alert a-bad" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
+    '<span>🔴 <b>EN VIVO — '+esc(cat(p.cat).nombre)+'</b> · '+esc(eq(p.local).nombre)+' <b>'+(+p.gl||0)+' - '+(+p.gv||0)+'</b> '+esc(eq(p.visitante).nombre)+'</span>'+
+    '<a href="?vivo='+p.id+'" target="_blank" style="color:var(--acc);font-weight:700">Ver marcador →</a></div>').join('');
+}
 function panelJugador(mi){
   let h=head('Hola, '+esc((YO.nombre||'').split(' ')[0]||''),esc(DB.config.club)+' · temporada '+esc(DB.config.temporada));
+  h+=bannerVivo();
   if(!mi) return h+'<div class="card"><div class="alert a-warn">Tu usuario todavía no está vinculado a una ficha del plantel. Pedile a un dirigente que te vincule desde <b>Usuarios</b>.</div></div>';
   const st=estado(mi.id), s=statsJug(mi.id), tope=DB.config.topeAmarillas||5;
   h+='<div class="card"><h2>Tu estado</h2><div class="btns" style="margin-bottom:12px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12.5px">'+esc(st.motivo)+'</span>':'')+'</div>'+
@@ -632,7 +645,8 @@ function vFixture(){
       '<td class="num scr" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
       '<td><b>'+esc(eq(p.visitante).nombre)+'</b>'+(p.visitante===yo?' ★':'')+'</td>'+
       '<td class="mut" style="font-size:12px">'+esc(p.torneo||'—')+'</td>'+
-      '<td class="btns" style="justify-content:flex-end">'+(mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
+      '<td class="btns" style="justify-content:flex-end">'+(!p.jugado&&puede?'<button class="sm'+(p.en_vivo?'':' gh')+'" onclick="abrirVivo(\''+p.id+'\')">'+(p.en_vivo?'🔴 En vivo':'▶ Vivo')+'</button>':'')+
+      (mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
       (puede?'<button class="gh sm" onclick="mPartido(\''+p.id+'\')">Editar</button>':'')+'</td></tr>';
   });
   return h+'</tbody></table></div></div>';
@@ -740,6 +754,224 @@ async function savePlanilla(pid){
   for(const id of borrar) await borrarFila('stats',id);
   if(!p.jugado){ const {error}=await SB.from('partidos').update({jugado:true}).eq('id',pid); if(error)toast(traducir(error.message),true); }
   cerrar(); await refrescar(); toast('Planilla guardada · disciplina actualizada');
+}
+/* --- PARTIDO EN VIVO (marcador en tiempo real, futsal) ---
+   Va escribiendo en el mismo partido/stats que la planilla, así que al Finalizar
+   queda exactamente igual que si se hubiera cargado a mano después del partido. */
+function relojSeg(p){
+  const base=+p.reloj_base_seg||0;
+  if(p&&p.reloj_estado==='corriendo'&&p.reloj_inicio) return base+Math.floor((Date.now()-new Date(p.reloj_inicio).getTime())/1000);
+  return base;
+}
+function mmss(seg){ seg=Math.max(0,seg|0); const m=Math.floor(seg/60), s=seg%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+function contarFaltas(p,lado){
+  let n=0;
+  (p.eventos||[]).forEach(e=>{ if(e.tipo==='entretiempo'){ n=0; return; } if(e.tipo==='falta'&&e.equipo===lado) n++; });
+  return n;
+}
+function abrirVivo(pid){ F.vivoId=pid; V='vivo'; render(); }
+function vPartidoVivo(pid){
+  const p=DB.partidos.find(x=>x.id===pid);
+  if(!p) return head('Partido en vivo','No se encontró el partido','<button class="gh" onclick="V=\'fixture\';render()">← Volver</button>')+'<div class="card">'+vacio('Este partido ya no existe')+'</div>';
+  if(!puedeCat(p.cat)) return head('Sin acceso','No tenés permiso para operar esta categoría','<button class="gh" onclick="V=\'fixture\';render()">← Volver</button>')+'<div class="card">'+vacio('Pedile a un dirigente que te habilite esta categoría')+'</div>';
+  if(!p.en_vivo&&!p.jugado) marcarEnVivo(pid);
+  const yo=propio().id, esLocal=p.local===yo, esVisita=p.visitante===yo;
+  const ladoProp=esLocal?'local':esVisita?'visita':null;
+  const js=jugsDe(p.cat).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  clearInterval(VIVO_TIMER);
+  VIVO_TIMER=setInterval(()=>{ const el=$('vReloj'); const pp=DB.partidos.find(x=>x.id===pid); if(el&&pp&&V==='vivo') el.textContent=mmss(relojSeg(pp)); },1000);
+
+  let h='<div class="head"><div><h1>'+esc(cat(p.cat).nombre)+' · '+fdate(p.fecha)+'</h1><div class="sub">'+esc(p.torneo||'')+(p.fnro?' · fecha '+esc(p.fnro):'')+(p.jugado?' · <span style="color:var(--ok)">finalizado</span>':'')+'</div></div>'+
+    '<div class="btns"><button class="gh" onclick="copiarLinkVivo(\''+pid+'\')">🔗 Copiar link para compartir</button><button class="gh" onclick="V=\'fixture\';render()">← Volver</button></div></div>';
+
+  h+='<div class="card" style="text-align:center"><div style="display:flex;justify-content:space-around;align-items:center;gap:14px;flex-wrap:wrap">'+
+    '<div style="flex:1;min-width:140px"><div class="mut" style="font-size:12px;text-transform:uppercase">'+esc(eq(p.local).nombre)+(esLocal?' ★':'')+'</div><div style="font-size:52px;font-weight:800">'+(+p.gl||0)+'</div></div>'+
+    '<div><div id="vReloj" class="scr" style="font-size:34px">'+mmss(relojSeg(p))+'</div>'+
+      (p.jugado?'':'<button class="'+(p.reloj_estado==='corriendo'?'dgr':'')+'" onclick="vivoToggleReloj(\''+pid+'\')" style="margin-top:8px">'+(p.reloj_estado==='corriendo'?'⏸ Pausar':'▶ Iniciar reloj')+'</button>')+'</div>'+
+    '<div style="flex:1;min-width:140px"><div class="mut" style="font-size:12px;text-transform:uppercase">'+esc(eq(p.visitante).nombre)+(esVisita?' ★':'')+'</div><div style="font-size:52px;font-weight:800">'+(+p.gv||0)+'</div></div>'+
+    '</div></div>';
+
+  if(!p.jugado){
+    h+='<div class="grid g2">';
+    h+='<div class="card"><h2>⚽ Goles</h2>';
+    if(ladoProp){
+      const rival=ladoProp==='local'?p.visitante:p.local, ladoRival=ladoProp==='local'?'visita':'local';
+      h+='<div class="f"><label>Goleador ('+esc(propio().nombre)+')</label><select id="vGolJ"><option value="">— sin especificar —</option>'+
+         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+        '<div class="f"><label>Asistencia (opcional)</label><select id="vGolA"><option value="">—</option>'+
+         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+        '<button style="width:100%" onclick="vivoGol(\''+pid+'\',\''+ladoProp+'\')">+ Gol '+esc(propio().nombre)+'</button>'+
+        '<button class="gh" style="width:100%;margin-top:8px" onclick="vivoGol(\''+pid+'\',\''+ladoRival+'\')">+ Gol '+esc(eq(rival).nombre)+'</button>';
+    } else {
+      h+='<button style="width:100%" onclick="vivoGol(\''+pid+'\',\'local\')">+ Gol '+esc(eq(p.local).nombre)+'</button>'+
+         '<button class="gh" style="width:100%;margin-top:8px" onclick="vivoGol(\''+pid+'\',\'visita\')">+ Gol '+esc(eq(p.visitante).nombre)+'</button>';
+    }
+    h+='</div>';
+
+    h+='<div class="card"><h2>▲ Tarjetas y faltas</h2>';
+    if(ladoProp){
+      const faltasProp=contarFaltas(p,ladoProp), faltasRival=contarFaltas(p,ladoProp==='local'?'visita':'local');
+      h+='<div class="f"><label>Jugador ('+esc(propio().nombre)+')</label><select id="vTarJ"><option value="">— elegir —</option>'+
+         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+        '<div class="btns"><button style="background:var(--warn);color:#111" onclick="vivoTarjeta(\''+pid+'\',\'amarilla\')">🟨 Amarilla</button>'+
+        '<button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
+        '<button class="gh" onclick="vivoFalta(\''+pid+'\')">⚠ Falta</button></div>'+
+        '<div class="btns" style="margin-top:12px;align-items:center">'+
+        '<span class="pill">Faltas '+esc(propio().nombre)+': <b style="color:'+(faltasProp>=5?'var(--bad)':'inherit')+'">'+faltasProp+'</b></span>'+
+        '<button class="gh sm" onclick="vivoFaltaRival(\''+pid+'\')">+ Falta '+esc(eq(ladoProp==='local'?p.visitante:p.local).nombre)+'</button>'+
+        '<span class="pill">Faltas rival: <b style="color:'+(faltasRival>=5?'var(--bad)':'inherit')+'">'+faltasRival+'</b></span></div>'+
+        '<div class="mut" style="font-size:11px;margin-top:6px">Regla de futsal: a partir de la 5ª falta acumulada por equipo y por tiempo, tiro libre directo sin barrera.</div>'+
+        '<button class="gh sm" style="margin-top:10px" onclick="vivoEntretiempo(\''+pid+'\')">⏱ Marcar entretiempo (reinicia el conteo de faltas)</button>';
+    } else h+='<div class="mut">Este partido no es de tu club, no hay plantel para cargar tarjetas o faltas.</div>';
+    h+='</div></div>';
+  }
+
+  const ev=(p.eventos||[]).slice().reverse();
+  h+='<div class="card"><h2 style="justify-content:space-between">Historial del partido'+(ev.length&&!p.jugado?'<button class="gh sm" onclick="vivoDeshacer(\''+pid+'\')">Deshacer último</button>':'')+'</h2>';
+  h+= ev.length? ev.map(e=>{
+      const nom=e.tipo==='entretiempo'?'Entretiempo':e.jid?jug(e.jid).nombre:(e.equipo==='local'?eq(p.local).nombre:eq(p.visitante).nombre);
+      const ic=e.tipo==='gol'?'⚽':e.tipo==='amarilla'?'🟨':e.tipo==='roja'?'🟥':e.tipo==='falta'?'⚠':'⏱';
+      const asist=e.aid?' <span class="mut">(asistencia '+esc(jug(e.aid).nombre)+')</span>':'';
+      return '<div class="alert a-inf" style="display:flex;justify-content:space-between"><span>'+ic+' <b>'+esc(nom)+'</b>'+asist+'</span><span class="mut">'+mmss(e.seg||0)+'</span></div>'; }).join('')
+    : vacio('Todavía no hay eventos cargados');
+  h+='</div>';
+
+  if(!p.jugado) h+='<div class="card"><button class="dgr" style="width:100%" onclick="vivoFinalizar(\''+pid+'\')">🏁 Finalizar partido</button>'+
+     '<div class="mut" style="font-size:11.5px;margin-top:8px;text-align:center">Cierra el marcador, guarda la planilla final y descuenta las suspensiones de esta fecha.</div></div>';
+  return h;
+}
+async function copiarLinkVivo(pid){
+  const link=location.origin+location.pathname+'?vivo='+pid;
+  try{ await navigator.clipboard.writeText(link); toast('Link copiado: '+link); }catch(e){ toast(link); }
+}
+async function marcarEnVivo(pid){
+  const {error}=await SB.from('partidos').update({en_vivo:true}).eq('id',pid);
+  if(error)return; const p=DB.partidos.find(x=>x.id===pid); if(p)p.en_vivo=true;
+}
+async function vivoToggleReloj(pid){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const o = p.reloj_estado==='corriendo'
+    ? {reloj_estado:'parado',reloj_base_seg:relojSeg(p),reloj_inicio:null}
+    : {reloj_estado:'corriendo',reloj_inicio:new Date().toISOString()};
+  const {error}=await SB.from('partidos').update(o).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  Object.assign(p,o); render();
+}
+function pushEvento(p,ev){ const arr=(p.eventos||[]).slice(); arr.push(ev); return arr; }
+async function sumarStat(pid,jid,delta){
+  const prev=DB.stats.find(s=>s.pid===pid&&s.jid===jid)||{};
+  const o={pid,jid,tit:prev.tit||false,min:prev.min||0,
+    g:Math.max(0,(prev.g||0)+(delta.g||0)), a:Math.max(0,(prev.a||0)+(delta.a||0)),
+    am:Math.max(0,(prev.am||0)+(delta.am||0)), fal:Math.max(0,(prev.fal||0)+(delta.fal||0)),
+    roja: delta.roja!==undefined?delta.roja:(prev.roja||false), gr:prev.gr||0};
+  if(prev.id) o.id=prev.id;
+  await guardar('stats',[o],{onConflict:'pid,jid'});
+}
+async function vivoGol(pid,equipo){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const yo=propio().id, ladoProp=p.local===yo?'local':p.visitante===yo?'visita':null;
+  const propia=equipo===ladoProp;
+  const jid=propia?(val('vGolJ')||null):null, aid=propia?(val('vGolA')||null):null;
+  const ev={tipo:'gol',equipo,jid,aid,seg:relojSeg(p),ts:new Date().toISOString()};
+  const o={eventos:pushEvento(p,ev)};
+  if(equipo==='local') o.gl=(+p.gl||0)+1; else o.gv=(+p.gv||0)+1;
+  const {error}=await SB.from('partidos').update(o).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  if(jid) await sumarStat(pid,jid,{g:1});
+  if(aid) await sumarStat(pid,aid,{a:1});
+  await refrescar();
+}
+async function vivoTarjeta(pid,tipo){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const jid=val('vTarJ'); if(!jid) return toast('Elegí el jugador',true);
+  const yo=propio().id, equipo=p.local===yo?'local':'visita';
+  const ev={tipo,equipo,jid,seg:relojSeg(p),ts:new Date().toISOString()};
+  const {error}=await SB.from('partidos').update({eventos:pushEvento(p,ev)}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  await sumarStat(pid,jid,tipo==='amarilla'?{am:1}:{roja:true});
+  await refrescar();
+}
+async function vivoFalta(pid){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const jid=val('vTarJ'); if(!jid) return toast('Elegí el jugador',true);
+  const yo=propio().id, equipo=p.local===yo?'local':'visita';
+  const ev={tipo:'falta',equipo,jid,seg:relojSeg(p),ts:new Date().toISOString()};
+  const {error}=await SB.from('partidos').update({eventos:pushEvento(p,ev)}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  await sumarStat(pid,jid,{fal:1});
+  await refrescar();
+}
+async function vivoFaltaRival(pid){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const yo=propio().id, equipo=p.local===yo?'visita':'local';
+  const ev={tipo:'falta',equipo,jid:null,seg:relojSeg(p),ts:new Date().toISOString()};
+  const {error}=await SB.from('partidos').update({eventos:pushEvento(p,ev)}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  await refrescar();
+}
+async function vivoEntretiempo(pid){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const ev={tipo:'entretiempo',seg:relojSeg(p),ts:new Date().toISOString()};
+  const {error}=await SB.from('partidos').update({eventos:pushEvento(p,ev)}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  await refrescar(); toast('Entretiempo marcado');
+}
+async function vivoDeshacer(pid){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p||!(p.eventos||[]).length)return;
+  const arr=(p.eventos||[]).slice(), last=arr.pop();
+  const o={eventos:arr};
+  if(last.tipo==='gol'){ if(last.equipo==='local') o.gl=Math.max(0,(+p.gl||0)-1); else o.gv=Math.max(0,(+p.gv||0)-1); }
+  const {error}=await SB.from('partidos').update(o).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  if(last.tipo==='gol'){ if(last.jid) await sumarStat(pid,last.jid,{g:-1}); if(last.aid) await sumarStat(pid,last.aid,{a:-1}); }
+  if(last.tipo==='amarilla'&&last.jid) await sumarStat(pid,last.jid,{am:-1});
+  if(last.tipo==='roja'&&last.jid) await sumarStat(pid,last.jid,{roja:false});
+  if(last.tipo==='falta'&&last.jid) await sumarStat(pid,last.jid,{fal:-1});
+  await refrescar(); toast('Deshecho: '+(last.tipo));
+}
+async function vivoFinalizar(pid){
+  if(!confirm('¿Finalizar el partido? Se cierra el marcador y se actualiza la disciplina.'))return;
+  const {error}=await SB.from('partidos').update({jugado:true,en_vivo:false,reloj_estado:'parado'}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  clearInterval(VIVO_TIMER); VIVO_TIMER=null;
+  V='fixture'; await refrescar(); toast('Partido finalizado · disciplina actualizada');
+}
+/* ---------- MARCADOR PÚBLICO (sin login, ?vivo=id) ---------- */
+async function vistaVivoPublico(pid){
+  root().innerHTML='<div class="load"><div class="spin"></div><div>Cargando…</div></div>';
+  const [ca,eqs,pa,ju]=await Promise.all([
+    SB.from('categorias').select('*'), SB.from('equipos').select('*'),
+    SB.from('partidos').select('*').eq('id',pid).maybeSingle(), SB.from('pub_jugadores').select('id,nombre')]);
+  if(pa.error||!pa.data){ root().innerHTML='<div id="gate"><div class="box"><div class="lg">'+ESCUDO+'</div><div class="err">No se encontró este partido, o el link venció.</div></div></div>'; return; }
+  const CATN=Object.fromEntries((ca.data||[]).map(c=>[c.id,c.nombre]));
+  const EQN=Object.fromEntries((eqs.data||[]).map(e=>[e.id,e.nombre]));
+  const JN=Object.fromEntries((ju.data||[]).map(j=>[j.id,j.nombre]));
+  let p=pa.data;
+  function pintar(){
+    const seg=relojSeg(p);
+    let h='<div id="pub" style="max-width:480px"><div class="hd"><div class="lg">'+ESCUDO+'</div><div><h1 style="font-size:20px">'+esc(CATN[p.cat]||'')+'</h1>'+
+      '<div class="mut" style="font-size:12.5px">'+fdate(p.fecha)+(p.torneo?' · '+esc(p.torneo):'')+'</div></div></div>'+
+      (p.jugado?'<div class="tag t-mut" style="margin-bottom:12px">PARTIDO FINALIZADO</div>':p.en_vivo?'<div class="tag t-bad" style="margin-bottom:12px">🔴 EN VIVO</div>':'<div class="tag t-mut" style="margin-bottom:12px">A JUGAR</div>')+
+      '<div class="card" style="text-align:center"><div style="display:flex;justify-content:space-around;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:110px"><div class="mut" style="font-size:11.5px;text-transform:uppercase">'+esc(EQN[p.local]||'—')+'</div><div style="font-size:44px;font-weight:800">'+(+p.gl||0)+'</div></div>'+
+      '<div class="scr" style="font-size:26px">'+(p.jugado?'FINAL':mmss(seg))+'</div>'+
+      '<div style="flex:1;min-width:110px"><div class="mut" style="font-size:11.5px;text-transform:uppercase">'+esc(EQN[p.visitante]||'—')+'</div><div style="font-size:44px;font-weight:800">'+(+p.gv||0)+'</div></div>'+
+      '</div></div>';
+    const ev=(p.eventos||[]).slice().reverse();
+    h+='<div class="card"><h2>Historial</h2>'+(ev.length? ev.map(e=>{
+        const nom=e.tipo==='entretiempo'?'Entretiempo':e.jid?(JN[e.jid]||'—'):(e.equipo==='local'?(EQN[p.local]||'—'):(EQN[p.visitante]||'—'));
+        const ic=e.tipo==='gol'?'⚽':e.tipo==='amarilla'?'🟨':e.tipo==='roja'?'🟥':e.tipo==='falta'?'⚠':'⏱';
+        const asist=e.aid?' <span class="mut">(asist. '+esc(JN[e.aid]||'')+')</span>':'';
+        return '<div class="alert a-inf" style="display:flex;justify-content:space-between"><span>'+ic+' <b>'+esc(nom)+'</b>'+asist+'</span><span class="mut">'+mmss(e.seg||0)+'</span></div>'; }).join('')
+      : vacio('Todavía no hay eventos'))+'</div><div class="mut" style="font-size:11px;text-align:center;margin-top:6px">Se actualiza solo cada pocos segundos.</div></div>';
+    root().innerHTML=h;
+  }
+  pintar();
+  const tick=setInterval(()=>{ if(!p.jugado) pintar(); },1000);
+  const poll=setInterval(async()=>{
+    const r=await SB.from('partidos').select('*').eq('id',pid).maybeSingle();
+    if(r.data){ p=r.data; pintar(); if(p.jugado){ clearInterval(poll); clearInterval(tick); } }
+  },4000);
 }
 /* ============ TABLA ============ */
 function vTabla(){
