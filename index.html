@@ -117,6 +117,18 @@ pre.out{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
   nav a{white-space:nowrap;margin:0}
   main{padding:15px}
 }
+/* En celular, las tablas anchas (Fixture) se convierten en tarjetas apiladas
+   para que los botones de acción (Vivo, Planilla, Editar) queden siempre a la
+   vista, sin depender de que el usuario descubra que hay que scrollear la
+   tabla hacia el costado. */
+@media(max-width:700px){
+  .tbl-cards table,.tbl-cards tbody,.tbl-cards tr,.tbl-cards td{display:block;width:100%}
+  .tbl-cards thead{display:none}
+  .tbl-cards tr{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--panel2)}
+  .tbl-cards td{border:none;padding:5px 0;text-align:left!important;white-space:normal!important}
+  .tbl-cards td.acts{padding-top:9px;margin-top:5px;border-top:1px solid var(--line)}
+  .tbl-cards td:not(.acts)::before{content:attr(data-label);display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:2px}
+}
 
 /* ---- LOGIN / PANTALLAS PLENAS ---- */
 #gate{min-height:100vh;display:grid;place-items:center;padding:20px}
@@ -636,22 +648,23 @@ function vFixture(){
   const ps=partsDe(F.cat).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
   const yo=propio().id;
-  h+='<div class="card"><div class="tw"><table><thead><tr><th>Fecha</th><th>Cat.</th><th class="num">Fº</th><th style="text-align:right">Local</th><th class="num">Resultado</th><th>Visitante</th><th>Torneo</th><th></th></tr></thead><tbody>';
+  h+='<div class="card"><div class="tw tbl-cards"><table><thead><tr><th>Fecha</th><th>Cat.</th><th class="num">Fº</th><th style="text-align:right">Local</th><th class="num">Resultado</th><th>Visitante</th><th>Torneo</th><th></th></tr></thead><tbody>';
   ps.forEach(p=>{
     const mio=p.local===yo||p.visitante===yo, gl=+p.gl||0, gv=+p.gv||0;
     let col='var(--muted)';
     if(p.jugado&&mio){ const a=p.local===yo?gl:gv, b=p.local===yo?gv:gl; col=a>b?'var(--ok)':a<b?'var(--bad)':'var(--warn)'; }
     const puede=puedeCat(p.cat);
-    h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
-      '<td class="mut" style="white-space:nowrap">'+fdate(p.fecha)+(p.hora?'<div style="font-size:11px">'+esc(p.hora)+' hs</div>':'')+(p.cancha?'<div style="font-size:11px">'+esc(p.cancha)+'</div>':'')+'</td><td class="mut">'+esc(cat(p.cat).nombre)+'</td>'+
-      '<td class="num mut">'+esc(p.fnro||'—')+'</td>'+
-      '<td style="text-align:right"><b>'+esc(eq(p.local).nombre)+'</b>'+(p.local===yo?' ★':'')+'</td>'+
-      '<td class="num scr" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
-      '<td><b>'+esc(eq(p.visitante).nombre)+'</b>'+(p.visitante===yo?' ★':'')+'</td>'+
-      '<td class="mut" style="font-size:12px">'+esc(p.torneo||'—')+'</td>'+
-      '<td class="btns" style="justify-content:flex-end">'+(!p.jugado&&(puede||p.en_vivo)?'<button class="sm'+(p.en_vivo?'':' gh')+'" onclick="abrirVivo(\''+p.id+'\')">'+(p.en_vivo?'🔴 En vivo':'▶ Vivo')+'</button>':'')+
+    const acts=(!p.jugado&&(puede||p.en_vivo)?'<button class="sm'+(p.en_vivo?'':' gh')+'" onclick="abrirVivo(\''+p.id+'\')">'+(p.en_vivo?'🔴 En vivo':'▶ Vivo')+'</button>':'')+
       (mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
-      (puede?'<button class="gh sm" onclick="mPartido(\''+p.id+'\')">Editar</button>':'')+'</td></tr>';
+      (puede?'<button class="gh sm" onclick="mPartido(\''+p.id+'\')">Editar</button>':'');
+    h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
+      '<td class="mut" data-label="Fecha" style="white-space:nowrap">'+fdate(p.fecha)+(p.hora?'<div style="font-size:11px">'+esc(p.hora)+' hs</div>':'')+(p.cancha?'<div style="font-size:11px">'+esc(p.cancha)+'</div>':'')+'</td><td class="mut" data-label="Categoría">'+esc(cat(p.cat).nombre)+'</td>'+
+      '<td class="num mut" data-label="Fecha de liga">'+esc(p.fnro||'—')+'</td>'+
+      '<td data-label="Local" style="text-align:right"><b>'+esc(eq(p.local).nombre)+'</b>'+(p.local===yo?' ★':'')+'</td>'+
+      '<td class="num scr" data-label="Resultado" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
+      '<td data-label="Visitante"><b>'+esc(eq(p.visitante).nombre)+'</b>'+(p.visitante===yo?' ★':'')+'</td>'+
+      '<td class="mut" data-label="Torneo" style="font-size:12px">'+esc(p.torneo||'—')+'</td>'+
+      '<td class="btns acts" style="justify-content:flex-end">'+(acts||'<span class="mut" style="font-size:12px">—</span>')+'</td></tr>';
   });
   return h+'</tbody></table></div></div>';
 }
