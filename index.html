@@ -1030,7 +1030,7 @@ function imprimir(pid){
 }
 /* ============ ZONA ============ */
 function vZona(){
-  let h=head('Zona / Rivales','Los equipos con los que competís',esDir()?'<button onclick="mEquipo()">+ Nuevo equipo</button>':'');
+  let h=head('Zona / Rivales','Los equipos con los que competís',esDir()?'<button onclick="mEquipo()">+ Nuevo equipo</button><button class="gh" onclick="mEquiposMasivo()">+ Cargar varios</button>':'');
   if(!DB.equipos.length) return h+vacio('Sin equipos','Cargá tu club y los rivales de la zona.');
   h+='<div class="grid g2">';
   DB.equipos.forEach(e=>{
@@ -1069,6 +1069,22 @@ async function delEquipo(id){
   if(DB.partidos.some(p=>p.local===id||p.visitante===id)) return toast('Tiene partidos cargados, no se puede borrar',true);
   if(!await borrarFila('equipos',id))return;
   cerrar(); await refrescar(); toast('Equipo eliminado');
+}
+function mEquiposMasivo(){
+  modal('Cargar varios equipos',
+  '<div class="mut" style="font-size:12px;margin-bottom:10px">Pegá la lista de clubes de la zona, uno por línea. Los que ya estén cargados se saltean solos.</div>'+
+  '<div class="f"><textarea id="ezLista" rows="10" placeholder="Deportivo Norte'+'\n'+'Club Atlético Sur'+'\n'+'Unión Vecinal…"></textarea></div>'+
+  '<div class="btns"><button onclick="guardarEquiposMasivo()">Cargar equipos</button><button class="gh" onclick="cerrar()">Cancelar</button></div>');
+}
+async function guardarEquiposMasivo(){
+  const lineas=[...new Set(val('ezLista').split('\n').map(s=>s.trim()).filter(Boolean))];
+  if(!lineas.length) return toast('Pegá al menos un equipo',true);
+  const existentes=new Set(DB.equipos.map(e=>e.nombre.toLowerCase()));
+  const nuevos=lineas.filter(n=>!existentes.has(n.toLowerCase()));
+  if(!nuevos.length){ cerrar(); return toast('Esos equipos ya estaban cargados',true); }
+  const filas=nuevos.map(nombre=>({nombre,propio:false,notas:''}));
+  if(!await guardar('equipos',filas))return;
+  cerrar(); await refrescar(); toast(nuevos.length+' equipo(s) cargado(s), '+(lineas.length-nuevos.length)+' ya existía(n)');
 }
 /* ============ ALTAS PENDIENTES ============ */
 function vAltas(){
