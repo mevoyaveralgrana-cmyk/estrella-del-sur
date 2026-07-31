@@ -204,12 +204,17 @@ const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
 const RAMAS=['Masculino','Femenino','Senior','Otras'];
 // Cualquier rama desconocida cae en 'Otras' para que ninguna categoría se pierda de las listas
 const ramaDe=c=>RAMAS.includes(c&&c.rama)?c.rama:'Otras';
-// Reserva y Primera (masculino y femenino) comparten un único plantel: elegir cualquiera de
-// las dos habilita al jugador para ser citado en ambas. La disciplina queda separada por
-// categoría (una suspensión en Reserva no afecta a Primera, y viceversa).
+// Dos categorías pueden quedar "vinculadas" (configurable en Config › Categorías): un jugador
+// de cualquiera de las dos puede anotarse como goleador/asistencia/tarjeta en partidos de la
+// otra (jugador "libre" que sube de categoría). La disciplina queda separada por categoría
+// (una suspensión en una no afecta a la otra). Reserva/1ra (y sus femeninos) vienen vinculados
+// de fábrica por nombre, por si todavía no se configuró el par_cat en la base.
 const PARES_CAT=[['Reserva','1ra'],['Reserva Femenino','1ra Femenino']];
 function parCat(catId){
-  const c=cat(catId); if(!c||!c.nombre) return null;
+  const c=cat(catId); if(!c||!c.id) return null;
+  if(c.par_cat) return c.par_cat;
+  const rev=DB.categorias.find(x=>x.par_cat===catId);
+  if(rev) return rev.id;
   for(const [a,b] of PARES_CAT){
     if(c.nombre===a){ const o=DB.categorias.find(x=>x.nombre===b); return o?o.id:null; }
     if(c.nombre===b){ const o=DB.categorias.find(x=>x.nombre===a); return o?o.id:null; }
@@ -813,6 +818,7 @@ function vPartidoVivo(pid){
   const yo=propio().id, esLocal=p.local===yo, esVisita=p.visitante===yo;
   const ladoProp=esLocal?'local':esVisita?'visita':null;
   const js=jugsDe(p.cat).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const optJ=j=>'<option value="'+j.id+'">'+esc(j.nombre)+(j.cat!==p.cat?' ('+esc(cat(j.cat).nombre)+')':'')+'</option>';
 
   let h='<div class="head"><div><h1>'+esc(cat(p.cat).nombre)+' · '+fdate(p.fecha)+'</h1><div class="sub">'+esc(p.torneo||'')+(p.fnro?' · fecha '+esc(p.fnro):'')+(p.jugado?' · <span style="color:var(--ok)">finalizado</span>':'')+'</div></div>'+
     '<div class="btns"><button class="gh" onclick="copiarLinkVivo(\''+pid+'\')">🔗 Copiar link para compartir</button><button class="gh" onclick="V=\'fixture\';render()">← Volver</button></div></div>';
@@ -830,9 +836,9 @@ function vPartidoVivo(pid){
     if(ladoProp){
       const rival=ladoProp==='local'?p.visitante:p.local, ladoRival=ladoProp==='local'?'visita':'local';
       h+='<div class="f"><label>Goleador ('+esc(propio().nombre)+')</label><select id="vGolJ"><option value="">— sin especificar —</option>'+
-         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+         js.map(optJ).join('')+'</select></div>'+
         '<div class="f"><label>Asistencia (opcional)</label><select id="vGolA"><option value="">—</option>'+
-         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+         js.map(optJ).join('')+'</select></div>'+
         '<button style="width:100%" onclick="vivoGol(\''+pid+'\',\''+ladoProp+'\')">+ Gol '+esc(propio().nombre)+'</button>'+
         '<button class="gh" style="width:100%;margin-top:8px" onclick="vivoGol(\''+pid+'\',\''+ladoRival+'\')">+ Gol '+esc(eq(rival).nombre)+'</button>';
     } else {
@@ -845,7 +851,7 @@ function vPartidoVivo(pid){
     if(ladoProp){
       const faltasProp=contarFaltas(p,ladoProp), faltasRival=contarFaltas(p,ladoProp==='local'?'visita':'local');
       h+='<div class="f"><label>Jugador ('+esc(propio().nombre)+')</label><select id="vTarJ"><option value="">— elegir —</option>'+
-         js.map(j=>'<option value="'+j.id+'">'+esc(j.nombre)+'</option>').join('')+'</select></div>'+
+         js.map(optJ).join('')+'</select></div>'+
         '<div class="btns"><button style="background:var(--warn);color:#111" onclick="vivoTarjeta(\''+pid+'\',\'amarilla\')">🟨 Amarilla</button>'+
         '<button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
         '<button class="gh" onclick="vivoFalta(\''+pid+'\')">⚠ Falta</button></div>'+
@@ -1052,7 +1058,7 @@ function mJugador(id){
   '<div class="row"><div class="f"><label>Categoría</label><select id="jC"'+(esDT()?' disabled':'')+'>'+optCats(esDT()?YO.cat:j.cat)+'</select></div>'+
   '<div class="f"><label>Posición</label><select id="jP">'+['Arquero','Cierre','Ala','Pivot'].map(p=>'<option'+(p===j.pos?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
   '<div class="f"><label>Pie hábil</label><select id="jPie">'+['Derecho','Izquierdo','Ambos'].map(p=>'<option'+(p===j.pie?' selected':'')+'>'+p+'</option>').join('')+'</select></div></div>'+
-  '<div class="mut" style="font-size:11px;margin-top:-6px">Reserva y 1ra (y sus femeninas) comparten plantel: elegir cualquiera de las dos habilita al jugador para las dos.</div>'+
+  '<div class="mut" style="font-size:11px;margin-top:-6px">'+(parCat(esDT()?YO.cat:j.cat)?'Esta categoría está vinculada con '+esc(cat(parCat(esDT()?YO.cat:j.cat)).nombre)+': el jugador también va a poder anotarse ahí.':'Si la categoría tiene una vinculada (Config › Categorías), el jugador también queda habilitado en esa.')+'</div>'+
   '<div class="row"><div class="f"><label>Nº carnet / pase</label><input id="jCar" value="'+esc(j.carnet||'')+'"></div>'+
   '<div class="f"><label>Estado</label><select id="jE">'+['activo','lesionado','baja'].map(e=>'<option'+(e===j.estado?' selected':'')+'>'+e+'</option>').join('')+'</select></div>'+
   '<div class="f"><label>Contacto de emergencia</label><input id="jEme" value="'+esc(j.emergencia||'')+'"></div></div>'+
@@ -1466,10 +1472,13 @@ function vConfig(){
   '<div class="row"><div class="f"><label>Puntos por victoria</label><input type="number" min="1" id="cfPV" value="'+(c.ptsVictoria||3)+'"></div>'+
   '<div class="f"><label>Puntos por empate</label><input type="number" min="0" id="cfPE" value="'+(c.ptsEmpate||1)+'"></div></div>'+
   '<div class="btns" style="margin-top:6px"><button onclick="saveConfig()">Guardar configuración</button></div></div>';
-  h+='<div class="card"><h2>Categorías<button class="sm" style="margin-left:auto" onclick="mCat()">+ Agregar</button></h2><div class="tw"><table><tbody>';
+  h+='<div class="card"><h2>Categorías<button class="sm" style="margin-left:auto" onclick="mCat()">+ Agregar</button></h2>'+
+   '<p class="mut" style="font-size:11.5px;margin:-4px 0 10px">Vinculá categorías (ej. Reserva↔1ra) para que sus jugadores "libres" puedan anotarse como goleador/asistencia en partidos de la otra. <button class="gh sm" style="margin-left:4px" onclick="recalcularLibres()">Recalcular jugadores libres</button></p>'+
+   '<div class="tw"><table><tbody>';
   RAMAS.forEach(r=>{ const l=cats().filter(x=>ramaDe(x)===r); if(!l.length)return;
     h+='<tr><td colspan="3" class="mut" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;padding-top:12px">'+esc(r)+'</td></tr>';
-    h+=l.map(x=>'<tr><td><b>'+esc(x.nombre)+'</b>'+(x.dt?'<div class="mut" style="font-size:11.5px">DT: '+esc(x.dt)+'</div>':'')+'</td>'+
+    h+=l.map(x=>'<tr><td><b>'+esc(x.nombre)+'</b>'+(x.dt?'<div class="mut" style="font-size:11.5px">DT: '+esc(x.dt)+'</div>':'')+
+      (parCat(x.id)?'<div class="mut" style="font-size:11px">↔ vinculada con '+esc(cat(parCat(x.id)).nombre)+'</div>':'')+'</td>'+
       '<td class="num mut">'+jugsDe(x.id).length+' jug.</td><td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mCat(\''+x.id+'\')">Editar</button></td></tr>').join('');
   });
   h+='</tbody></table></div></div></div>';
@@ -1494,19 +1503,33 @@ async function saveConfig(){
 }
 function mCat(id){
   const c=cats().find(x=>x.id===id)||{rama:'Masculino'};
+  const parActual=id?parCat(id):null;
+  const otras=cats().filter(x=>x.id!==id);
   modal(id?'Editar categoría':'Nueva categoría',
   '<div class="row"><div class="f"><label>Nombre *</label><input id="kN" value="'+esc(c.nombre||'')+'" placeholder="4ta"></div>'+
   '<div class="f"><label>Rama</label><select id="kR">'+RAMAS.map(r=>'<option'+(r===(c.id?ramaDe(c):'Masculino')?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
   '<div class="f"><label>Entrenador</label><input id="kD" value="'+esc(c.dt||'')+'"></div></div>'+
+  (id?'<div class="f"><label>Categoría vinculada (jugadores libres)</label><select id="kPar"><option value="">— ninguna —</option>'+
+    otras.map(x=>'<option value="'+x.id+'"'+(parActual===x.id?' selected':'')+'>'+esc(x.nombre)+'</option>').join('')+'</select>'+
+    '<div class="mut" style="font-size:11px;margin-top:4px">Un jugador de esta categoría también va a poder anotarse como goleador/asistencia/tarjeta en partidos de la vinculada, y viceversa.</div></div>':'')+
   '<div class="btns"><button onclick="saveCat(\''+(id||'')+'\')">Guardar</button><button class="gh" onclick="cerrar()">Cancelar</button>'+
   (id?'<button class="dgr sm" style="margin-left:auto" onclick="delCat(\''+id+'\')">Eliminar</button>':'')+'</div>');
 }
 async function saveCat(id){
   if(!val('kN')) return toast('Falta el nombre',true);
-  const o={nombre:val('kN'),rama:val('kR'),dt:val('kD'),orden:id?(cats().find(x=>x.id===id).orden||0):cats().length+1};
+  const o={nombre:val('kN'),rama:val('kR'),dt:val('kD'),par_cat:id?(val('kPar')||null):null,
+    orden:id?(cats().find(x=>x.id===id).orden||0):cats().length+1};
   if(id)o.id=id;
   if(!await guardar('categorias',o))return;
   cerrar(); await refrescar(); toast('Categoría guardada');
+}
+async function recalcularLibres(){
+  const filas=DB.jugadores.filter(j=>j.estado!=='baja').map(j=>({id:j.id,cat2:parCat(j.cat)}))
+    .filter(o=>(DB.jugadores.find(j=>j.id===o.id).cat2||null)!==(o.cat2||null));
+  if(!filas.length) return toast('Ya estaban todos al día');
+  if(!confirm('Se va a actualizar la categoría vinculada de '+filas.length+' jugador(es) según los pares configurados. ¿Continuar?')) return;
+  if(!await guardar('jugadores',filas))return;
+  await refrescar(); toast(filas.length+' jugador(es) actualizados');
 }
 async function delCat(id){
   if(DB.jugadores.some(j=>misCats(j).includes(id))) return toast('Tiene jugadores asignados',true);
