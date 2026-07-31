@@ -648,23 +648,21 @@ function vFixture(){
   const ps=partsDe(F.cat).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
   const yo=propio().id;
-  h+='<div class="card"><div class="tw tbl-cards"><table><thead><tr><th>Fecha</th><th>Cat.</th><th class="num">Fº</th><th style="text-align:right">Local</th><th class="num">Resultado</th><th>Visitante</th><th>Torneo</th><th></th></tr></thead><tbody>';
+  h+='<div class="card"><div class="tw tbl-cards"><table><thead><tr><th>Partido</th><th>Fecha</th><th class="num">Resultado</th><th></th></tr></thead><tbody>';
   ps.forEach(p=>{
     const mio=p.local===yo||p.visitante===yo, gl=+p.gl||0, gv=+p.gv||0;
     let col='var(--muted)';
     if(p.jugado&&mio){ const a=p.local===yo?gl:gv, b=p.local===yo?gv:gl; col=a>b?'var(--ok)':a<b?'var(--bad)':'var(--warn)'; }
     const puede=puedeCat(p.cat);
-    const acts=(!p.jugado&&(puede||p.en_vivo)?'<button class="sm'+(p.en_vivo?'':' gh')+'" onclick="abrirVivo(\''+p.id+'\')">'+(p.en_vivo?'🔴 En vivo':'▶ Vivo')+'</button>':'')+
-      (mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
+    const acts=(mio&&puede?'<button class="gh sm" onclick="mPlanilla(\''+p.id+'\')">Planilla</button>':'')+
       (puede?'<button class="gh sm" onclick="mPartido(\''+p.id+'\')">Editar</button>':'');
+    const matchTxt=esc(eq(p.local).nombre)+(p.local===yo?' ★':'')+' <span class="mut" style="font-weight:400">vs</span> '+esc(eq(p.visitante).nombre)+(p.visitante===yo?' ★':'');
     h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
-      '<td class="mut" data-label="Fecha" style="white-space:nowrap">'+fdate(p.fecha)+(p.hora?'<div style="font-size:11px">'+esc(p.hora)+' hs</div>':'')+(p.cancha?'<div style="font-size:11px">'+esc(p.cancha)+'</div>':'')+'</td><td class="mut" data-label="Categoría">'+esc(cat(p.cat).nombre)+'</td>'+
-      '<td class="num mut" data-label="Fecha de liga">'+esc(p.fnro||'—')+'</td>'+
-      '<td data-label="Local" style="text-align:right"><b>'+esc(eq(p.local).nombre)+'</b>'+(p.local===yo?' ★':'')+'</td>'+
-      '<td class="num scr" data-label="Resultado" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:'<span class="tag t-mut">a jugar</span>')+'</td>'+
-      '<td data-label="Visitante"><b>'+esc(eq(p.visitante).nombre)+'</b>'+(p.visitante===yo?' ★':'')+'</td>'+
-      '<td class="mut" data-label="Torneo" style="font-size:12px">'+esc(p.torneo||'—')+'</td>'+
-      '<td class="btns acts" style="justify-content:flex-end">'+(acts||'<span class="mut" style="font-size:12px">—</span>')+'</td></tr>';
+      '<td data-label="Partido"><a onclick="abrirVivo(\''+p.id+'\')" style="cursor:pointer;color:var(--txt);text-decoration:none;font-weight:700">'+(p.en_vivo?'🔴 ':'')+matchTxt+'</a>'+
+        '<div class="mut" style="font-size:11px;margin-top:2px">'+esc(cat(p.cat).nombre)+' · '+esc(p.torneo||'—')+(p.fnro?' · fecha '+esc(p.fnro):'')+'</div></td>'+
+      '<td class="mut" data-label="Fecha" style="white-space:nowrap">'+fdate(p.fecha)+(p.hora?'<div style="font-size:11px">'+esc(p.hora)+' hs</div>':'')+(p.cancha?'<div style="font-size:11px">'+esc(p.cancha)+'</div>':'')+'</td>'+
+      '<td class="num scr" data-label="Resultado" style="color:'+col+';white-space:nowrap">'+(p.jugado?gl+' - '+gv:!p.jugado&&(puede||p.en_vivo)?'<span class="tag'+(p.en_vivo?' t-bad':' t-mut')+'">'+(p.en_vivo?'en vivo':'a jugar')+'</span>':'<span class="tag t-mut">a jugar</span>')+'</td>'+
+      '<td class="btns acts" style="justify-content:flex-end">'+acts+'</td></tr>';
   });
   return h+'</tbody></table></div></div>';
 }
