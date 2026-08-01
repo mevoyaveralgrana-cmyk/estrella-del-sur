@@ -532,8 +532,11 @@ function render(){
     if(VIVO_POLL){ clearInterval(VIVO_POLL); VIVO_POLL=null; }
   }
   if(V==='vivo'){ root().querySelectorAll('nav a[data-v]').forEach(a=>a.classList.remove('on'));
+    const entrandoVivo=!VIVO_POLL;
     if(!VIVO_POLL) VIVO_POLL=setInterval(()=>{ if(V==='vivo') refrescar(); },4000);
-    $('main').innerHTML=vPartidoVivo(F.vivoId); window.scrollTo(0,0); return; }
+    $('main').innerHTML=vPartidoVivo(F.vivoId);
+    if(entrandoVivo) window.scrollTo(0,0); // solo al entrar; los refrescos automáticos no deben mover el scroll
+    return; }
   const vistas={panel:vPanel,fixture:vFixture,tabla:vTabla,plantel:vPlantel,stats:vStats,
     disciplina:vDisc,citaciones:vCit,zona:vZona,altas:vAltas,usuarios:vUsuarios,config:vConfig};
   const perm=NAV.find(n=>n.v===V);
