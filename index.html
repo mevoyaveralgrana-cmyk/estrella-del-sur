@@ -201,6 +201,8 @@ const cats=()=>DB.categorias;
 const misCats=j=>[j&&j.cat,j&&j.cat2].filter(Boolean);
 const jugsDe=c=>DB.jugadores.filter(j=>(!c||misCats(j).includes(c))&&j.estado!=='baja');
 const partsDe=c=>DB.partidos.filter(p=>!c||p.cat===c);
+// Un amistoso no suma puntos en la tabla ni descuenta fechas de suspensión.
+const esAmistoso=p=>/amistoso/i.test((p&&p.torneo)||'');
 const RAMAS=['Masculino','Femenino','Senior','Otras'];
 // Cualquier rama desconocida cae en 'Otras' para que ninguna categoría se pierda de las listas
 const ramaDe=c=>RAMAS.includes(c&&c.rama)?c.rama:'Otras';
@@ -236,7 +238,7 @@ const ROL={dirigente:'Dirigente',dt:'Entrenador',jugador:'Jugador',publico:'Vist
 const pIn =r=>({...r,local:r.eq_local,visitante:r.eq_visita});
 const pOut=o=>({id:o.id,cat:o.cat,torneo:o.torneo,fnro:o.fnro,fecha:nn(o.fecha),hora:o.hora,cancha:o.cancha,
   eq_local:o.local,eq_visita:o.visitante,gl:o.gl,gv:o.gv,arbitro:o.arbitro,jugado:o.jugado});
-const cIn =r=>({club:r.club,temporada:r.temporada,topeAmarillas:r.tope_amarillas,fechasRoja:r.fechas_roja,
+const cIn =r=>({club:r.club,temporada:r.temporada,fechasRoja:r.fechas_roja,
   ptsVictoria:r.pts_victoria,ptsEmpate:r.pts_empate,token:r.token_alta});
 
 async function cargarTodo(){
@@ -280,24 +282,16 @@ async function refrescar(){ try{ await cargarTodo(); render(); }catch(e){ toast(
 
 /* ============ MOTOR DE DISCIPLINA (calculado, no almacenado) ============
    La tabla `sanciones` guarda SOLO lo que se carga a mano (tribunal, rivales).
-   Las rojas de planilla y la acumulación de amarillas se derivan en el momento,
-   así nunca se duplican ni quedan desfasadas.                                */
-function amarillasTotales(jid,catId){
-  let t=0;
-  DB.stats.filter(s=>s.jid===jid).forEach(s=>{
-    const p=DB.partidos.find(x=>x.id===s.pid);
-    if(p&&p.jugado&&(!catId||p.cat===catId)) t+=(+s.am||0);
-  });
-  return t;
-}
-function amarillasAcum(jid,catId){ const t=DB.config.topeAmarillas||5; return amarillasTotales(jid,catId)%t; }
-
+   Las rojas de planilla se derivan en el momento, así nunca se duplican ni
+   quedan desfasadas.
+   NOTA: esta liga NO suspende por acumulación de amarillas, por eso la app no
+   las registra ni las cuenta. Solo la roja genera suspensión automática.      */
 function fechasJugadas(catId,eqId,desde){
-  return DB.partidos.filter(p=>p.jugado&&p.cat===catId&&(p.fecha||'')>(desde||'')&&
+  return DB.partidos.filter(p=>p.jugado&&p.cat===catId&&!esAmistoso(p)&&(p.fecha||'')>(desde||'')&&
     (p.local===eqId||p.visitante===eqId)).length;
 }
 function calcularSanciones(){
-  const out=[], tope=DB.config.topeAmarillas||5, yo=propio().id;
+  const out=[], yo=propio().id;
   const push=s=>{
     const eqId=s.jid?yo:s.eqid;
     const cum=Math.min(s.total,(s.cumplidas||0)+fechasJugadas(s.cat,eqId,s.desde));
@@ -314,23 +308,6 @@ function calcularSanciones(){
       total:DB.config.fechasRoja||1,cumplidas:0,desde:p.fecha,
       motivo:'Expulsión vs '+eq(p.local===yo?p.visitante:p.local).nombre});
   });
-  // 3. acumulación de amarillas (separada por categoría, si el jugador juega en más de una)
-  DB.jugadores.forEach(j=>{
-    misCats(j).forEach(catId=>{
-      const n=Math.floor(amarillasTotales(j.id,catId)/tope);
-      if(!n)return;
-      const jugados=DB.partidos.filter(p=>p.jugado&&p.cat===catId&&(p.local===yo||p.visitante===yo))
-        .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
-      let acum=0, disparos=[];
-      jugados.forEach(p=>{
-        const s=DB.stats.find(x=>x.pid===p.id&&x.jid===j.id);
-        acum+=s?(+s.am||0):0;
-        while(disparos.length<Math.floor(acum/tope)) disparos.push(p.fecha);
-      });
-      disparos.forEach((f,i)=>push({id:'auto-acum-'+j.id+'-'+catId+'-'+i,jid:j.id,cat:catId,tipo:'acumulacion',auto:true,
-        total:1,cumplidas:0,desde:f,motivo:'Acumulación de '+tope+' amarillas'}));
-    });
-  });
   return out;
 }
 const suspendidos=c=>SANC.filter(s=>s.rest>0&&(!c||s.cat===c));
@@ -341,14 +318,12 @@ function estado(jid,catId){
   const rest=act.reduce((a,s)=>a+s.rest,0);
   if(rest>0) return {ok:false,cls:'t-bad',txt:'SUSPENDIDO ('+rest+' fecha'+(rest>1?'s':'')+')',motivo:act.map(s=>s.motivo).join(' · '),rest};
   if(j.estado==='lesionado') return {ok:false,cls:'t-bad',txt:'LESIONADO',motivo:j.lesion||'Sin detalle',rest:0};
-  const am=amarillasAcum(jid,catId), tope=DB.config.topeAmarillas||5;
-  if(am>=tope-1) return {ok:true,cls:'t-warn',txt:'EN RIESGO ('+am+'/'+tope+')',motivo:'A una amarilla de la suspensión',rest:0};
   return {ok:true,cls:'t-ok',txt:'HABILITADO',motivo:'',rest:0};
 }
 /* ============ TABLA Y ESTADÍSTICAS ============ */
 function tabla(c,torneo){
   const T={}, add=id=>{ if(!T[id])T[id]={id,pj:0,g:0,e:0,p:0,gf:0,gc:0}; return T[id]; };
-  DB.partidos.filter(p=>p.jugado&&(!c||p.cat===c)&&(!torneo||p.torneo===torneo)).forEach(p=>{
+  DB.partidos.filter(p=>p.jugado&&(!c||p.cat===c)&&(torneo?p.torneo===torneo:!esAmistoso(p))).forEach(p=>{
     if(!p.local||!p.visitante)return;
     const L=add(p.local),Vi=add(p.visitante),gl=+p.gl||0,gv=+p.gv||0;
     L.pj++;Vi.pj++;L.gf+=gl;L.gc+=gv;Vi.gf+=gv;Vi.gc+=gl;
@@ -572,8 +547,6 @@ function vPanel(){
   const mi=miJugador();
   if(esJug()) return panelJugador(mi);
   const prox=DB.partidos.filter(p=>!p.jugado).sort((a,b)=>(a.fecha||'z').localeCompare(b.fecha||'z')).slice(0,6);
-  const tope=DB.config.topeAmarillas||5;
-  const riesgo=DB.jugadores.filter(j=>j.estado!=='baja'&&amarillasTotales(j.id)>0&&amarillasAcum(j.id)===tope-1);
   const sinCit=esPub()?[]:prox.filter(p=>(p.local===yo||p.visitante===yo)&&!DB.citaciones.some(c=>c.pid===p.id));
   const act=DB.jugadores.filter(j=>j.estado!=='baja');
 
@@ -592,7 +565,6 @@ function vPanel(){
   h+='<div class="grid g2"><div class="card"><h2>⚠ Alertas</h2>';
   let n=0;
   susp.forEach(s=>{ n++; h+='<div class="alert a-bad"><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> — '+esc(cat(s.cat).nombre)+(s.jid?'':' <span class="mut">('+esc(eq(s.eqid).nombre)+')</span>')+'<br><span class="mut" style="font-size:12px">'+esc(s.motivo)+' · le quedan '+s.rest+' fecha(s)</span></div>'; });
-  riesgo.forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> está a <b>una amarilla</b> de la suspensión <span class="mut">('+amarillasAcum(j.id)+'/'+tope+')</span></div>'; });
   DB.jugadores.filter(j=>j.estado==='lesionado').forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> — lesionado'+(esPub()?'':' <span class="mut" style="font-size:12px">'+esc(j.lesion||'sin detalle')+'</span>')+'</div>'; });
   sinCit.forEach(p=>{ n++; h+='<div class="alert a-inf">Falta la citación de <b>'+esc(cat(p.cat).nombre)+'</b> vs '+esc(eq(p.local===yo?p.visitante:p.local).nombre)+' <span class="mut">('+fdate(p.fecha)+')</span></div>'; });
   if(!n) h+='<div class="alert a-inf">✓ Todo en orden. Sin suspendidos ni lesionados.</div>';
@@ -618,9 +590,9 @@ function panelJugador(mi){
   let h=head('Hola, '+esc((YO.nombre||'').split(' ')[0]||''),esc(DB.config.club)+' · temporada '+esc(DB.config.temporada));
   h+=bannerVivo();
   if(!mi) return h+'<div class="card"><div class="alert a-warn">Tu usuario todavía no está vinculado a una ficha del plantel. Pedile a un dirigente que te vincule desde <b>Usuarios</b>.</div></div>';
-  const st=estado(mi.id), s=statsJug(mi.id), tope=DB.config.topeAmarillas||5;
+  const st=estado(mi.id), s=statsJug(mi.id);
   h+='<div class="card"><h2>Tu estado</h2><div class="btns" style="margin-bottom:12px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12.5px">'+esc(st.motivo)+'</span>':'')+'</div>'+
-     '<div class="grid g4">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(mi.id)+'/'+tope,'Amarillas')+'</div></div>';
+     '<div class="grid g4">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(s.min,'Minutos')+'</div></div>';
   const mias=DB.citaciones.filter(c=>(c.jids||[]).includes(mi.id)).map(c=>({c,p:DB.partidos.find(p=>p.id===c.pid)}))
     .filter(x=>x.p&&!x.p.jugado).sort((a,b)=>(a.p.fecha||'').localeCompare(b.p.fecha||''));
   h+='<div class="card"><h2>✉ Tus citaciones</h2>';
@@ -751,26 +723,26 @@ function mPlanilla(pid){
   const p=DB.partidos.find(x=>x.id===pid), js=jugsDe(p.cat), yo=propio().id;
   if(!js.length) return toast('No hay jugadores en esa categoría',true);
   let h='<div class="mut" style="margin-bottom:12px">'+esc(eq(p.local).nombre)+' vs '+esc(eq(p.visitante).nombre)+' · '+fdate(p.fecha)+' · '+esc(cat(p.cat).nombre)+'</div>'+
-   '<div class="tw"><table><thead><tr><th>Jugador</th><th class="num" title="Titular">T</th><th class="num">Min</th><th class="num">Gol</th><th class="num">Asis</th><th class="num">Am</th><th class="num" title="Roja">Rj</th><th class="num" title="Faltas">Fal</th><th class="num" title="Goles recibidos">GR</th></tr></thead><tbody>';
+   '<div class="tw"><table><thead><tr><th>Jugador</th><th class="num" title="Titular">T</th><th class="num">Min</th><th class="num">Gol</th><th class="num">Asis</th><th class="num" title="Roja">Rj</th><th class="num" title="Faltas">Fal</th><th class="num" title="Goles recibidos">GR</th></tr></thead><tbody>';
   js.forEach(j=>{
     const s=DB.stats.find(x=>x.pid===pid&&x.jid===j.id)||{}, st=estado(j.id,p.cat);
     h+='<tr><td><b>'+esc(j.nombre)+'</b> <span class="mut">'+(j.dorsal?'#'+esc(j.dorsal):'')+'</span>'+(st.ok?'':' <span class="tag t-bad" style="font-size:9px">'+esc(st.txt.split(' ')[0])+'</span>')+'</td>'+
     '<td class="num"><input type="checkbox" style="width:16px" id="s_tit_'+j.id+'"'+(s.tit?' checked':'')+'></td>'+
-    ['min','g','a','am','ROJA','fal','gr'].map(k=> k==='ROJA'
+    ['min','g','a','ROJA','fal','gr'].map(k=> k==='ROJA'
       ? '<td class="num"><input type="checkbox" style="width:16px" id="s_roja_'+j.id+'"'+(s.roja?' checked':'')+'></td>'
       : '<td class="num"><input type="number" min="0" style="width:54px;padding:4px;text-align:center" id="s_'+k+'_'+j.id+'" value="'+(s[k]!=null?s[k]:'')+'"></td>').join('')+'</tr>';
   });
   h+='</tbody></table></div><div class="btns" style="margin-top:14px"><button onclick="savePlanilla(\''+pid+'\')">Guardar planilla</button><button class="gh" onclick="cerrar()">Cancelar</button></div>'+
-  '<div class="mut" style="font-size:11.5px;margin-top:10px">Las rojas generan la suspensión sola. Las amarillas se acumulan hasta el tope de '+(DB.config.topeAmarillas||5)+'.</div>';
+  '<div class="mut" style="font-size:11.5px;margin-top:10px">Las rojas generan la suspensión sola. En esta liga las amarillas no acumulan, por eso no se cargan.</div>';
   modal('Planilla del partido',h,880);
 }
 async function savePlanilla(pid){
   const p=DB.partidos.find(x=>x.id===pid), filas=[], borrar=[];
   jugsDe(p.cat).forEach(j=>{
     const g=k=>{ const e=$('s_'+k+'_'+j.id); return e?(e.type==='checkbox'?e.checked:(e.value===''?0:+e.value)):0; };
-    const o={pid,jid:j.id,tit:g('tit'),min:g('min'),g:g('g'),a:g('a'),am:g('am'),roja:g('roja'),fal:g('fal'),gr:g('gr')};
+    const o={pid,jid:j.id,tit:g('tit'),min:g('min'),g:g('g'),a:g('a'),am:0,roja:g('roja'),fal:g('fal'),gr:g('gr')};
     const prev=DB.stats.find(s=>s.pid===pid&&s.jid===j.id);
-    const vacia=!o.tit&&!o.min&&!o.g&&!o.a&&!o.am&&!o.roja&&!o.fal&&!o.gr;
+    const vacia=!o.tit&&!o.min&&!o.g&&!o.a&&!o.roja&&!o.fal&&!o.gr;
     if(vacia){ if(prev)borrar.push(prev.id); } else { if(prev)o.id=prev.id; filas.push(o); }
   });
   if(filas.length&&!await guardar('stats',filas,{onConflict:'pid,jid'}))return;
@@ -855,8 +827,7 @@ function vPartidoVivo(pid){
       const faltasProp=contarFaltas(p,ladoProp), faltasRival=contarFaltas(p,ladoProp==='local'?'visita':'local');
       h+='<div class="f"><label>Jugador ('+esc(propio().nombre)+')</label><select id="vTarJ"><option value="">— elegir —</option>'+
          js.map(optJ).join('')+'</select></div>'+
-        '<div class="btns"><button style="background:var(--warn);color:#111" onclick="vivoTarjeta(\''+pid+'\',\'amarilla\')">🟨 Amarilla</button>'+
-        '<button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
+        '<div class="btns"><button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
         '<button class="gh" onclick="vivoFalta(\''+pid+'\')">⚠ Falta</button></div>'+
         '<div class="btns" style="margin-top:12px;align-items:center">'+
         '<span class="pill">Faltas '+esc(propio().nombre)+': <b style="color:'+(faltasProp>=5?'var(--bad)':'inherit')+'">'+faltasProp+'</b></span>'+
@@ -1038,12 +1009,12 @@ function vPlantel(){
   const js=DB.jugadores.filter(j=>!F.cat||misCats(j).includes(F.cat))
     .sort((a,b)=>a.cat===b.cat?(+a.dorsal||99)-(+b.dorsal||99):cat(a.cat).nombre.localeCompare(cat(b.cat).nombre));
   if(!js.length) return h+vacio('Sin jugadores','Cargalos a mano o pasales el link de alta desde Configuración para que se carguen solos.');
-  h+='<div class="card"><div class="tw"><table><thead><tr><th class="num" style="width:38px">#</th><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">Edad</th><th>Estado</th><th class="num">PJ</th><th class="num">G</th><th class="num">Am</th><th></th></tr></thead><tbody>';
+  h+='<div class="card"><div class="tw"><table><thead><tr><th class="num" style="width:38px">#</th><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">Edad</th><th>Estado</th><th class="num">PJ</th><th class="num">G</th><th class="num">A</th><th></th></tr></thead><tbody>';
   js.forEach(j=>{
     const st=estado(j.id,F.cat), s=statsJug(j.id,F.cat);
     h+='<tr><td class="num mut">'+esc(j.dorsal||'—')+'</td><td><b>'+esc(j.nombre)+'</b>'+(j.apodo?' <span class="mut">"'+esc(j.apodo)+'"</span>':'')+(j.dni?'<div class="mut" style="font-size:11px">DNI '+esc(j.dni)+'</div>':'')+'</td>'+
     '<td class="mut">'+esc(catsTxt(j))+'</td><td class="mut">'+esc(j.pos||'—')+'</td><td class="num">'+edadDe(j)+'</td>'+
-    '<td><span class="tag '+st.cls+'">'+st.txt+'</span></td><td class="num">'+s.pj+'</td><td class="num"><b>'+s.g+'</b></td><td class="num">'+amarillasAcum(j.id,F.cat)+'</td>'+
+    '<td><span class="tag '+st.cls+'">'+st.txt+'</span></td><td class="num">'+s.pj+'</td><td class="num"><b>'+s.g+'</b></td><td class="num">'+s.a+'</td>'+
     '<td class="btns" style="justify-content:flex-end"><button class="gh sm" onclick="mFicha(\''+j.id+'\')">Ficha</button>'+
     (puedeCat(j.cat)?'<button class="gh sm" onclick="mJugador(\''+j.id+'\')">Editar</button>':'')+'</td></tr>';
   });
@@ -1085,12 +1056,12 @@ async function delJugador(id){
   cerrar(); await refrescar(); toast('Jugador eliminado');
 }
 function mFicha(id){
-  const j=jug(id), s=statsJug(id), st=estado(id), tope=DB.config.topeAmarillas||5;
+  const j=jug(id), s=statsJug(id), st=estado(id);
   const hist=DB.stats.filter(x=>x.jid===id).map(x=>({s:x,p:DB.partidos.find(p=>p.id===x.pid)})).filter(x=>x.p&&x.p.jugado)
     .sort((a,b)=>(b.p.fecha||'').localeCompare(a.p.fecha||''));
   const sanc=SANC.filter(x=>x.jid===id);
   let h='<div class="btns" style="margin-bottom:14px"><span class="tag '+st.cls+'">'+st.txt+'</span>'+(st.motivo?'<span class="mut" style="font-size:12px">'+esc(st.motivo)+'</span>':'')+'</div>'+
-   '<div class="grid g4" style="margin-bottom:14px">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(amarillasAcum(id)+'/'+tope,'Amarillas')+'</div>'+
+   '<div class="grid g4" style="margin-bottom:14px">'+kpi(s.pj,'Partidos')+kpi(s.g,'Goles','var(--acc)')+kpi(s.a,'Asistencias')+kpi(s.min,'Minutos')+'</div>'+
    '<div class="card" style="background:var(--panel2)"><div class="row" style="font-size:12.5px">'+
    ([['Categoría',catsTxt(j)],['Apodo',j.apodo||'—'],['Posición',j.pos||'—'],['Edad',edadDe(j)+' años'],['Dorsal',j.dorsal||'—'],['Pie',j.pie||'—'],
     ['Minutos',s.min],['Titular en',s.tit+' partidos'],['Estado',j.estado||'activo']]
@@ -1099,8 +1070,8 @@ function mFicha(id){
   if(j.pos==='Arquero') h+='<div class="grid g4" style="margin:14px 0">'+kpi(s.gr,'Goles recibidos')+kpi(s.vi,'Vallas invictas','var(--ok)')+kpi((s.gr/(s.pj||1)).toFixed(2),'Promedio')+'</div>';
   if(sanc.length) h+='<h2 style="margin-top:14px">Historial disciplinario</h2><div class="tw"><table><tbody>'+
     sanc.map(x=>'<tr><td>'+esc(x.motivo)+'<div class="mut" style="font-size:11px">'+fdate(x.desde)+(x.auto?' · automática':'')+'</div></td><td class="num"><span class="tag '+(x.rest>0?'t-bad':'t-mut')+'">'+(x.rest>0?x.rest+' fecha(s) pendientes':'cumplida')+'</span></td></tr>').join('')+'</tbody></table></div>';
-  if(hist.length) h+='<h2 style="margin-top:14px">Partido a partido</h2><div class="tw"><table><thead><tr><th>Fecha</th><th>Rival</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">Am</th><th class="num">Rj</th></tr></thead><tbody>'+
-    hist.map(x=>'<tr><td class="mut">'+fdate(x.p.fecha)+'</td><td>'+esc(eq(x.p.local===propio().id?x.p.visitante:x.p.local).nombre)+'</td><td class="num">'+(x.s.min||0)+'</td><td class="num"><b>'+(x.s.g||0)+'</b></td><td class="num">'+(x.s.a||0)+'</td><td class="num">'+(x.s.am||0)+'</td><td class="num">'+(x.s.roja?'1':'0')+'</td></tr>').join('')+'</tbody></table></div>';
+  if(hist.length) h+='<h2 style="margin-top:14px">Partido a partido</h2><div class="tw"><table><thead><tr><th>Fecha</th><th>Rival</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">Rj</th></tr></thead><tbody>'+
+    hist.map(x=>'<tr><td class="mut">'+fdate(x.p.fecha)+'</td><td>'+esc(eq(x.p.local===propio().id?x.p.visitante:x.p.local).nombre)+'</td><td class="num">'+(x.s.min||0)+'</td><td class="num"><b>'+(x.s.g||0)+'</b></td><td class="num">'+(x.s.a||0)+'</td><td class="num">'+(x.s.roja?'1':'0')+'</td></tr>').join('')+'</tbody></table></div>';
   modal(esc(j.nombre)+(j.apodo?' <span class="mut" style="font-size:13px;font-weight:400">"'+esc(j.apodo)+'"</span>':''),h,780);
 }
 /* ============ ESTADÍSTICAS ============ */
@@ -1112,12 +1083,12 @@ function vStats(){
   const rank=(t,k)=>{ const l=con.filter(x=>x.s[k]>0).sort((a,b)=>b.s[k]-a.s[k]).slice(0,10); if(!l.length)return '';
     const max=l[0].s[k];
     return '<div class="card"><h2>'+t+'</h2>'+l.map((x,i)=>'<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span><span class="mut">'+(i+1)+'.</span> <b>'+esc(x.j.nombre)+'</b> <span class="mut">'+esc(catsTxt(x.j))+'</span></span><b>'+x.s[k]+'</b></div><div class="bar"><i style="width:'+(x.s[k]/max*100)+'%"></i></div></div>').join('')+'</div>'; };
-  h+='<div class="grid g2">'+rank('★ Goleadores','g')+rank('◎ Asistencias','a')+rank('⏱ Más minutos','min')+rank('▲ Más amonestados','am')+'</div>';
+  h+='<div class="grid g2">'+rank('★ Goleadores','g')+rank('◎ Asistencias','a')+rank('⏱ Más minutos','min')+rank('⚠ Más faltas','fal')+'</div>';
   const arq=con.filter(x=>x.j.pos==='Arquero');
   if(arq.length) h+='<div class="card"><h2>◇ Arqueros</h2><div class="tw"><table><thead><tr><th>Arquero</th><th class="num">PJ</th><th class="num">Goles recibidos</th><th class="num">Vallas invictas</th><th class="num">Promedio</th></tr></thead><tbody>'+
     arq.sort((a,b)=>(a.s.gr/(a.s.pj||1))-(b.s.gr/(b.s.pj||1))).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.gr+'</td><td class="num" style="color:var(--ok)"><b>'+x.s.vi+'</b></td><td class="num">'+(x.s.gr/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
-  h+='<div class="card"><h2>Planilla completa</h2><div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">PJ</th><th class="num">Tit</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">G+A</th><th class="num">Am</th><th class="num">Rj</th><th class="num">Fal</th></tr></thead><tbody>'+
-    con.sort((a,b)=>(b.s.g+b.s.a)-(a.s.g+a.s.a)).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(catsTxt(x.j))+'</td><td class="mut">'+esc(x.j.pos||'—')+'</td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.tit+'</td><td class="num">'+x.s.min+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num">'+x.s.a+'</td><td class="num"><b>'+(x.s.g+x.s.a)+'</b></td><td class="num">'+x.s.am+'</td><td class="num">'+x.s.rj+'</td><td class="num mut">'+x.s.fal+'</td></tr>').join('')+'</tbody></table></div></div>';
+  h+='<div class="card"><h2>Planilla completa</h2><div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th>Pos.</th><th class="num">PJ</th><th class="num">Tit</th><th class="num">Min</th><th class="num">G</th><th class="num">A</th><th class="num">G+A</th><th class="num">Rj</th><th class="num">Fal</th></tr></thead><tbody>'+
+    con.sort((a,b)=>(b.s.g+b.s.a)-(a.s.g+a.s.a)).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(catsTxt(x.j))+'</td><td class="mut">'+esc(x.j.pos||'—')+'</td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.tit+'</td><td class="num">'+x.s.min+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num">'+x.s.a+'</td><td class="num"><b>'+(x.s.g+x.s.a)+'</b></td><td class="num">'+x.s.rj+'</td><td class="num mut">'+x.s.fal+'</td></tr>').join('')+'</tbody></table></div></div>';
   return h;
 }
 /* ============ DISCIPLINA ============ */
@@ -1125,11 +1096,11 @@ function vDisc(){
   const btn=(esDir()||esDT())?'<button onclick="mSancion()">+ Cargar sanción</button>':'';
   let h=head('Disciplina','Suspensiones propias y de los rivales · la habilitación la calcula el sistema',btn)+barraCat();
   const act=suspendidos(F.cat), mias=act.filter(s=>s.jid), riv=act.filter(s=>!s.jid);
-  const tope=DB.config.topeAmarillas||5;
+  const lesion=DB.jugadores.filter(j=>j.estado==='lesionado'&&(!F.cat||misCats(j).includes(F.cat))).length;
   h+='<div class="grid g4" style="margin-bottom:14px">'+kpi(mias.length,'Propios suspendidos',mias.length?'var(--bad)':'')+
      kpi(riv.length,'Rivales suspendidos')+
-     kpi(DB.jugadores.filter(j=>j.estado!=='baja'&&amarillasTotales(j.id)>0&&amarillasAcum(j.id)===tope-1).length,'En riesgo','var(--warn)')+
-     kpi(tope,'Tope de amarillas')+'</div>';
+     kpi(lesion,'Lesionados',lesion?'var(--warn)':'')+
+     kpi(DB.config.fechasRoja||1,'Fechas por roja')+'</div>';
   h+='<div class="card"><h2>🚫 Suspendidos del club</h2>';
   h+= mias.length? '<div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th>Motivo</th><th class="num">Total</th><th class="num">Cumplidas</th><th class="num">Restan</th><th></th></tr></thead><tbody>'+
     mias.map(s=>'<tr><td><b>'+esc(jug(s.jid).nombre)+'</b></td><td class="mut">'+esc(cat(s.cat).nombre)+'</td>'+
@@ -1143,13 +1114,6 @@ function vDisc(){
     '<td class="num"><span class="tag t-warn">'+s.rest+'</span></td><td class="btns" style="justify-content:flex-end">'+(puedeCat(s.cat)?'<button class="gh sm" onclick="mSancion(\''+s.id+'\')">Editar</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'
     : vacio('Sin sanciones de rivales cargadas','Cargalas cuando salga el boletín del tribunal.');
   h+='</div>';
-  const rg=DB.jugadores.filter(j=>j.estado!=='baja'&&(!F.cat||misCats(j).includes(F.cat))&&amarillasTotales(j.id,F.cat)>0)
-    .sort((a,b)=>amarillasAcum(b.id,F.cat)-amarillasAcum(a.id,F.cat));
-  if(rg.length) h+='<div class="card"><h2>▲ Acumulación de amarillas</h2><div class="tw"><table><thead><tr><th>Jugador</th><th>Cat.</th><th class="num">Vigentes</th><th class="num">Totales</th><th style="width:170px">Progreso</th><th>Situación</th></tr></thead><tbody>'+
-    rg.map(j=>{ const a=amarillasAcum(j.id,F.cat);
-      return '<tr><td><b>'+esc(j.nombre)+'</b></td><td class="mut">'+esc(catsTxt(j))+'</td><td class="num"><b>'+a+'</b> <span class="mut">/'+tope+'</span></td><td class="num mut">'+amarillasTotales(j.id,F.cat)+'</td>'+
-      '<td><div class="bar"><i style="width:'+Math.min(100,a/tope*100)+'%;background:'+(a>=tope-1?'var(--bad)':a>=tope-2?'var(--warn)':'var(--acc2)')+'"></i></div></td>'+
-      '<td>'+(a>=tope-1?'<span class="tag t-bad">a 1 de la suspensión</span>':a>=tope-2?'<span class="tag t-warn">atención</span>':'<span class="tag t-mut">normal</span>')+'</td></tr>'; }).join('')+'</tbody></table></div></div>';
   const cum=SANC.filter(s=>s.rest<=0);
   if(cum.length) h+='<div class="card"><h2>Historial de sanciones cumplidas</h2><div class="tw"><table><tbody>'+
     cum.slice(-15).reverse().map(s=>'<tr><td><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> <span class="mut">'+esc(s.jid?'':eq(s.eqid).nombre)+'</span></td><td class="mut">'+esc(s.motivo)+'</td><td class="mut">'+fdate(s.desde)+'</td><td class="num"><span class="tag t-mut">cumplida</span></td>'+
@@ -1470,8 +1434,8 @@ function vConfig(){
   '<div class="row"><div class="f"><label>Nombre del club</label><input id="cfClub" value="'+esc(c.club||'')+'"></div>'+
   '<div class="f"><label>Temporada</label><input id="cfTemp" value="'+esc(c.temporada||'')+'"></div></div>'+
   '<h2 style="margin-top:14px">Reglas de disciplina</h2>'+
-  '<div class="row"><div class="f"><label>Amarillas para suspensión</label><input type="number" min="1" id="cfTope" value="'+(c.topeAmarillas||5)+'"></div>'+
-  '<div class="f"><label>Fechas por roja directa</label><input type="number" min="1" id="cfRoja" value="'+(c.fechasRoja||1)+'"></div></div>'+
+  '<div class="row"><div class="f"><label>Fechas por roja directa</label><input type="number" min="1" id="cfRoja" value="'+(c.fechasRoja||1)+'"></div></div>'+
+  '<div class="mut" style="font-size:11px;margin-top:-6px">Esta liga no suspende por acumulación de amarillas, así que la app no las registra.</div>'+
   '<div class="row"><div class="f"><label>Puntos por victoria</label><input type="number" min="1" id="cfPV" value="'+(c.ptsVictoria||3)+'"></div>'+
   '<div class="f"><label>Puntos por empate</label><input type="number" min="0" id="cfPE" value="'+(c.ptsEmpate||1)+'"></div></div>'+
   '<div class="btns" style="margin-top:6px"><button onclick="saveConfig()">Guardar configuración</button></div></div>';
@@ -1499,7 +1463,7 @@ function vConfig(){
 }
 async function saveConfig(){
   const {error}=await SB.from('config').update({club:val('cfClub')||'Estrella del Sur',temporada:val('cfTemp'),
-    tope_amarillas:+val('cfTope')||5,fechas_roja:+val('cfRoja')||1,
+    fechas_roja:+val('cfRoja')||1,
     pts_victoria:+val('cfPV')||3,pts_empate:+val('cfPE')||1}).eq('id',1);
   if(error)return toast(traducir(error.message),true);
   await refrescar(); pintarShell(); render(); toast('Configuración guardada');
@@ -1552,9 +1516,9 @@ function exportar(){
   a.download='estrella-del-sur-'+hoy()+'.json'; a.click(); toast('Backup descargado');
 }
 function exportarCSV(){
-  const rows=[['Jugador','Apodo','Categoria','Posicion','PJ','Titular','Minutos','Goles','Asistencias','Amarillas','Rojas','Faltas','Estado']];
+  const rows=[['Jugador','Apodo','Categoria','Posicion','PJ','Titular','Minutos','Goles','Asistencias','Rojas','Faltas','Estado']];
   DB.jugadores.forEach(j=>{ const s=statsJug(j.id);
-    rows.push([j.nombre,j.apodo||'',catsTxt(j),j.pos||'',s.pj,s.tit,s.min,s.g,s.a,s.am,s.rj,s.fal,estado(j.id).txt]); });
+    rows.push([j.nombre,j.apodo||'',catsTxt(j),j.pos||'',s.pj,s.tit,s.min,s.g,s.a,s.rj,s.fal,estado(j.id).txt]); });
   const csv='﻿'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='estadisticas-'+hoy()+'.csv'; a.click(); toast('CSV descargado');
