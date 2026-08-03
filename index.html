@@ -561,8 +561,12 @@ function vPanel(){
   const susp=suspendidos(), yo=propio().id;
   const mi=miJugador();
   if(esJug()) return panelJugador(mi);
-  const prox=DB.partidos.filter(p=>!p.jugado).sort((a,b)=>(a.fecha||'z').localeCompare(b.fecha||'z')).slice(0,6);
-  const sinCit=esPub()?[]:prox.filter(p=>(p.local===yo||p.visitante===yo)&&!DB.citaciones.some(c=>c.pid===p.id));
+  // Próxima fecha del club: se agrupan los partidos que comparten fecha/rival (uno por
+  // categoría) en una sola fila, para no repetir el mismo partido 11 veces.
+  const proxRaw=DB.partidos.filter(p=>!p.jugado&&p.fecha).sort((a,b)=>(a.fecha||'z').localeCompare(b.fecha||'z'));
+  const gruposProx={};
+  proxRaw.forEach(p=>{ const k=(p.fecha||'')+'|'+(p.torneo||'')+'|'+(p.fnro||'')+'|'+p.local+'|'+p.visitante; (gruposProx[k]=gruposProx[k]||[]).push(p); });
+  const prox=Object.values(gruposProx).slice(0,6);
   const act=DB.jugadores.filter(j=>j.estado!=='baja');
 
   let h=head(esc(DB.config.club),'Temporada '+esc(DB.config.temporada)+' · '+cats().length+' categorías · '+act.length+' jugadores');
@@ -581,11 +585,10 @@ function vPanel(){
   let n=0;
   susp.forEach(s=>{ n++; h+='<div class="alert a-bad"><b>'+esc(s.jid?jug(s.jid).nombre:s.nombre)+'</b> — '+esc(cat(s.cat).nombre)+(s.jid?'':' <span class="mut">('+esc(eq(s.eqid).nombre)+')</span>')+'<br><span class="mut" style="font-size:12px">'+esc(s.motivo)+' · le quedan '+s.rest+' fecha(s)</span></div>'; });
   DB.jugadores.filter(j=>j.estado==='lesionado').forEach(j=>{ n++; h+='<div class="alert a-warn"><b>'+esc(j.nombre)+'</b> — lesionado'+(esPub()?'':' <span class="mut" style="font-size:12px">'+esc(j.lesion||'sin detalle')+'</span>')+'</div>'; });
-  sinCit.forEach(p=>{ n++; h+='<div class="alert a-inf">Falta la citación de <b>'+esc(cat(p.cat).nombre)+'</b> vs '+esc(eq(p.local===yo?p.visitante:p.local).nombre)+' <span class="mut">('+fdate(p.fecha)+')</span></div>'; });
   if(!n) h+='<div class="alert a-inf">✓ Todo en orden. Sin suspendidos ni lesionados.</div>';
   h+='</div><div class="card"><h2>▦ Próximos partidos</h2>';
-  h+= prox.length? '<div class="tw"><table><tbody>'+prox.map(p=>{ const d=dias(p.fecha), mio=p.local===yo||p.visitante===yo;
-      return '<tr><td style="width:62px" class="mut">'+fdate(p.fecha)+'</td><td><b>'+esc(eq(p.local).nombre)+'</b> vs <b>'+esc(eq(p.visitante).nombre)+'</b><div class="mut" style="font-size:11.5px">'+esc(cat(p.cat).nombre)+' · fecha '+esc(p.fnro||'—')+'</div></td>'+
+  h+= prox.length? '<div class="tw"><table><tbody>'+prox.map(g=>{ const p=g[0], d=dias(p.fecha), mio=p.local===yo||p.visitante===yo;
+      return '<tr><td style="width:62px" class="mut">'+fdate(p.fecha)+'</td><td><b>'+esc(eq(p.local).nombre)+'</b> vs <b>'+esc(eq(p.visitante).nombre)+'</b><div class="mut" style="font-size:11.5px">'+esc(p.torneo||'—')+' · fecha '+esc(p.fnro||'—')+' · '+g.length+' categoría'+(g.length>1?'s':'')+'</div></td>'+
       '<td class="num" style="width:100px">'+(d!==null?'<span class="tag '+(d<=2?'t-warn':'t-mut')+'">'+(d===0?'HOY':d<0?'vencido':'en '+d+' d')+'</span>':'')+(mio?'':' <span class="tag t-mut">zona</span>')+'</td></tr>'; }).join('')+'</tbody></table></div>'
     : vacio('Sin partidos programados','Cargalos desde Fixture y resultados');
   h+='</div></div>';
