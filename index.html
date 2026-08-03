@@ -824,6 +824,11 @@ function avisoFaltas(n,nombre){
   if(n===TOPE_FALTAS-1) return '<div class="alert a-warn" style="margin-top:10px">⚠ <b>'+esc(nombre)+'</b> está en 4 faltas, con una más llega al límite.</div>';
   return '';
 }
+// Tarjeta amarilla por equipo (no por jugador): esta liga no suspende por acumularlas,
+// así que solo importa el conteo del equipo, no de quién la recibió.
+function contarAmarillasEquipo(p,lado){ return (p.eventos||[]).filter(e=>e.tipo==='amarilla'&&e.equipo===lado).length; }
+function contarAmarillasJugador(p,jid){ return (p.eventos||[]).filter(e=>e.tipo==='amarilla'&&e.jid===jid).length; }
+function pillAmarillas(n,nombre){ return '<span class="pill">Amarillas '+esc(nombre)+': <b style="color:'+(n>0?'var(--warn)':'inherit')+'">'+n+'</b></span>'; }
 function abrirVivo(pid){ F.vivoId=pid; V='vivo'; render(); }
 function vPartidoVivoLectura(p){
   let h='<div class="head"><div><h1>'+esc(cat(p.cat).nombre)+' · '+fdate(p.fecha)+'</h1><div class="sub">'+esc(p.torneo||'')+(p.fnro?' · fecha '+esc(p.fnro):'')+'</div></div>'+
@@ -880,17 +885,25 @@ function vPartidoVivo(pid){
 
     h+='<div class="card"><h2>▲ Tarjetas y faltas</h2>';
     if(ladoProp){
-      const faltasProp=contarFaltas(p,ladoProp), faltasRival=contarFaltas(p,ladoProp==='local'?'visita':'local');
+      const rival2=ladoProp==='local'?p.visitante:p.local, ladoRival2=ladoProp==='local'?'visita':'local';
+      const faltasProp=contarFaltas(p,ladoProp), faltasRival=contarFaltas(p,ladoRival2);
+      const amProp=contarAmarillasEquipo(p,ladoProp), amRival=contarAmarillasEquipo(p,ladoRival2);
       h+='<div class="f"><label>Jugador ('+esc(propio().nombre)+')</label><select id="vTarJ"><option value="">— elegir —</option>'+
          js.map(optJ).join('')+'</select></div>'+
-        '<div class="btns"><button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
+        '<div class="btns"><button style="background:var(--warn);color:#111" onclick="vivoTarjeta(\''+pid+'\',\'amarilla\')">🟨 Amarilla</button>'+
+        '<button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
         '<button class="gh" onclick="vivoFalta(\''+pid+'\')">⚠ Falta</button></div>'+
+        '<div class="mut" style="font-size:11px;margin:6px 0">Con la 2ª amarilla al mismo jugador se carga la roja automáticamente (expulsado y suspendido la próxima fecha).</div>'+
+        '<div class="btns" style="align-items:center">'+
+        pillAmarillas(amProp,propio().nombre)+
+        '<button class="gh sm" onclick="vivoAmarillaEquipo(\''+pid+'\',\''+ladoRival2+'\')">+ Amarilla '+esc(eq(rival2).nombre)+'</button>'+
+        pillAmarillas(amRival,eq(rival2).nombre)+'</div>'+
         '<div class="btns" style="margin-top:12px;align-items:center">'+
         pillFaltas(faltasProp,propio().nombre)+
-        '<button class="gh sm" onclick="vivoFaltaRival(\''+pid+'\')">+ Falta '+esc(eq(ladoProp==='local'?p.visitante:p.local).nombre)+'</button>'+
-        pillFaltas(faltasRival,eq(ladoProp==='local'?p.visitante:p.local).nombre)+'</div>'+
+        '<button class="gh sm" onclick="vivoFaltaRival(\''+pid+'\')">+ Falta '+esc(eq(rival2).nombre)+'</button>'+
+        pillFaltas(faltasRival,eq(rival2).nombre)+'</div>'+
         avisoFaltas(faltasProp,propio().nombre)+
-        avisoFaltas(faltasRival,eq(ladoProp==='local'?p.visitante:p.local).nombre)+
+        avisoFaltas(faltasRival,eq(rival2).nombre)+
         '<div class="mut" style="font-size:11px;margin-top:6px">Se cuentan hasta 5 faltas por equipo y por tiempo. De la 6ª en adelante se cobra tiro libre directo sin barrera.</div>'+
         '<button class="gh sm" style="margin-top:10px" onclick="vivoEntretiempo(\''+pid+'\')">⏱ Marcar entretiempo (reinicia el conteo de faltas)</button>';
     } else h+='<div class="mut">Este partido no es de tu club, no hay plantel para cargar tarjetas o faltas.</div>';
@@ -954,9 +967,23 @@ async function vivoTarjeta(pid,tipo){
   const jid=val('vTarJ'); if(!jid) return toast('Elegí el jugador',true);
   const yo=propio().id, equipo=p.local===yo?'local':'visita';
   const ev={tipo,equipo,jid,seg:relojSeg(p),ts:new Date().toISOString()};
+  let eventos=pushEvento(p,ev);
+  // Dos amarillas al mismo jugador en el partido = roja automática (expulsado + suspendido).
+  const esDobleAmarilla=tipo==='amarilla'&&contarAmarillasJugador({eventos},jid)>=2;
+  if(esDobleAmarilla) eventos=pushEvento({eventos},{tipo:'roja',equipo,jid,seg:relojSeg(p),ts:new Date().toISOString(),motivo:'doble amarilla'});
+  const {error}=await SB.from('partidos').update({eventos}).eq('id',pid);
+  if(error) return toast(traducir(error.message),true);
+  const delta=tipo==='amarilla'?{am:1}:{roja:true};
+  if(esDobleAmarilla) delta.roja=true;
+  await sumarStat(pid,jid,delta);
+  if(esDobleAmarilla) toast('🟨🟨 Doble amarilla: '+esc(jug(jid).nombre)+' expulsado, roja automática');
+  await refrescar();
+}
+async function vivoAmarillaEquipo(pid,equipo){
+  const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
+  const ev={tipo:'amarilla',equipo,jid:null,seg:relojSeg(p),ts:new Date().toISOString()};
   const {error}=await SB.from('partidos').update({eventos:pushEvento(p,ev)}).eq('id',pid);
   if(error) return toast(traducir(error.message),true);
-  await sumarStat(pid,jid,tipo==='amarilla'?{am:1}:{roja:true});
   await refrescar();
 }
 async function vivoFalta(pid){
