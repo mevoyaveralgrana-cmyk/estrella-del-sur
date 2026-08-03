@@ -574,9 +574,6 @@ function vPanel(){
       '<td class="num" style="width:100px">'+(d!==null?'<span class="tag '+(d<=2?'t-warn':'t-mut')+'">'+(d===0?'HOY':d<0?'vencido':'en '+d+' d')+'</span>':'')+(mio?'':' <span class="tag t-mut">zona</span>')+'</td></tr>'; }).join('')+'</tbody></table></div>'
     : vacio('Sin partidos programados','Cargalos desde Fixture y resultados');
   h+='</div></div>';
-  const gol=DB.jugadores.map(j=>({j,s:statsJug(j.id)})).filter(x=>x.s.g>0).sort((a,b)=>b.s.g-a.s.g).slice(0,8);
-  if(gol.length) h+='<div class="card"><h2>★ Goleadores del club</h2><div class="tw"><table><thead><tr><th style="width:32px">#</th><th>Jugador</th><th>Categoría</th><th class="num">PJ</th><th class="num">Goles</th><th class="num">Prom.</th></tr></thead><tbody>'+
-    gol.map((x,i)=>'<tr><td class="mut">'+(i+1)+'</td><td><b>'+esc(x.j.nombre)+'</b></td><td class="mut">'+esc(cat(x.j.cat).nombre)+'</td><td class="num">'+x.s.pj+'</td><td class="num"><b style="color:var(--acc)">'+x.s.g+'</b></td><td class="num mut">'+(x.s.g/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
   return h;
 }
 function bannerVivo(){
@@ -759,10 +756,24 @@ function relojSeg(p){
   return base;
 }
 function mmss(seg){ seg=Math.max(0,seg|0); const m=Math.floor(seg/60), s=seg%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+/* Faltas acumuladas por equipo y por tiempo. Se cuentan hasta 5: de la 6ª en adelante
+   se cobra tiro libre directo sin barrera. El entretiempo reinicia el conteo. */
+const TOPE_FALTAS=5;
 function contarFaltas(p,lado){
   let n=0;
   (p.eventos||[]).forEach(e=>{ if(e.tipo==='entretiempo'){ n=0; return; } if(e.tipo==='falta'&&e.equipo===lado) n++; });
   return n;
+}
+function pillFaltas(n,nombre){
+  const col=n>=TOPE_FALTAS?'var(--bad)':n===TOPE_FALTAS-1?'var(--warn)':'inherit';
+  return '<span class="pill">Faltas '+esc(nombre)+': <b style="color:'+col+'">'+Math.min(n,TOPE_FALTAS)+'</b><span class="mut">/'+TOPE_FALTAS+'</span>'+
+    (n>TOPE_FALTAS?' <span class="mut" style="font-size:11px">+'+(n-TOPE_FALTAS)+' cobradas</span>':'')+'</span>';
+}
+function avisoFaltas(n,nombre){
+  if(n>TOPE_FALTAS) return '<div class="alert a-bad" style="margin-top:10px">🔴 <b>'+esc(nombre)+'</b> ya pasó el límite: cada falta se cobra tiro libre sin barrera.</div>';
+  if(n===TOPE_FALTAS) return '<div class="alert a-bad" style="margin-top:10px">🔴 <b>'+esc(nombre)+'</b> llegó a las 5 faltas: <b>la próxima se cobra tiro libre sin barrera</b>.</div>';
+  if(n===TOPE_FALTAS-1) return '<div class="alert a-warn" style="margin-top:10px">⚠ <b>'+esc(nombre)+'</b> está en 4 faltas, con una más llega al límite.</div>';
+  return '';
 }
 function abrirVivo(pid){ F.vivoId=pid; V='vivo'; render(); }
 function vPartidoVivoLectura(p){
@@ -810,11 +821,7 @@ function vPartidoVivo(pid){
     h+='<div class="card"><h2>⚽ Goles</h2>';
     if(ladoProp){
       const rival=ladoProp==='local'?p.visitante:p.local, ladoRival=ladoProp==='local'?'visita':'local';
-      h+='<div class="f"><label>Goleador ('+esc(propio().nombre)+')</label><select id="vGolJ"><option value="">— sin especificar —</option>'+
-         js.map(optJ).join('')+'</select></div>'+
-        '<div class="f"><label>Asistencia (opcional)</label><select id="vGolA"><option value="">—</option>'+
-         js.map(optJ).join('')+'</select></div>'+
-        '<button style="width:100%" onclick="vivoGol(\''+pid+'\',\''+ladoProp+'\')">+ Gol '+esc(propio().nombre)+'</button>'+
+      h+='<button style="width:100%" onclick="vivoGol(\''+pid+'\',\''+ladoProp+'\')">+ Gol '+esc(propio().nombre)+'</button>'+
         '<button class="gh" style="width:100%;margin-top:8px" onclick="vivoGol(\''+pid+'\',\''+ladoRival+'\')">+ Gol '+esc(eq(rival).nombre)+'</button>';
     } else {
       h+='<button style="width:100%" onclick="vivoGol(\''+pid+'\',\'local\')">+ Gol '+esc(eq(p.local).nombre)+'</button>'+
@@ -830,10 +837,12 @@ function vPartidoVivo(pid){
         '<div class="btns"><button class="dgr" onclick="vivoTarjeta(\''+pid+'\',\'roja\')">🟥 Roja</button>'+
         '<button class="gh" onclick="vivoFalta(\''+pid+'\')">⚠ Falta</button></div>'+
         '<div class="btns" style="margin-top:12px;align-items:center">'+
-        '<span class="pill">Faltas '+esc(propio().nombre)+': <b style="color:'+(faltasProp>=5?'var(--bad)':'inherit')+'">'+faltasProp+'</b></span>'+
+        pillFaltas(faltasProp,propio().nombre)+
         '<button class="gh sm" onclick="vivoFaltaRival(\''+pid+'\')">+ Falta '+esc(eq(ladoProp==='local'?p.visitante:p.local).nombre)+'</button>'+
-        '<span class="pill">Faltas rival: <b style="color:'+(faltasRival>=5?'var(--bad)':'inherit')+'">'+faltasRival+'</b></span></div>'+
-        '<div class="mut" style="font-size:11px;margin-top:6px">Regla de futsal: a partir de la 5ª falta acumulada por equipo y por tiempo, tiro libre directo sin barrera.</div>'+
+        pillFaltas(faltasRival,eq(ladoProp==='local'?p.visitante:p.local).nombre)+'</div>'+
+        avisoFaltas(faltasProp,propio().nombre)+
+        avisoFaltas(faltasRival,eq(ladoProp==='local'?p.visitante:p.local).nombre)+
+        '<div class="mut" style="font-size:11px;margin-top:6px">Se cuentan hasta 5 faltas por equipo y por tiempo. De la 6ª en adelante se cobra tiro libre directo sin barrera.</div>'+
         '<button class="gh sm" style="margin-top:10px" onclick="vivoEntretiempo(\''+pid+'\')">⏱ Marcar entretiempo (reinicia el conteo de faltas)</button>';
     } else h+='<div class="mut">Este partido no es de tu club, no hay plantel para cargar tarjetas o faltas.</div>';
     h+='</div></div>';
@@ -880,18 +889,15 @@ async function sumarStat(pid,jid,delta){
   if(prev.id) o.id=prev.id;
   await guardar('stats',[o],{onConflict:'pid,jid'});
 }
+// El gol se carga directo al equipo: no se pide goleador durante el partido.
+// Si después querés el detalle por jugador, se completa en la Planilla.
 async function vivoGol(pid,equipo){
   const p=DB.partidos.find(x=>x.id===pid); if(!p)return;
-  const yo=propio().id, ladoProp=p.local===yo?'local':p.visitante===yo?'visita':null;
-  const propia=equipo===ladoProp;
-  const jid=propia?(val('vGolJ')||null):null, aid=propia?(val('vGolA')||null):null;
-  const ev={tipo:'gol',equipo,jid,aid,seg:relojSeg(p),ts:new Date().toISOString()};
+  const ev={tipo:'gol',equipo,jid:null,aid:null,seg:relojSeg(p),ts:new Date().toISOString()};
   const o={eventos:pushEvento(p,ev)};
   if(equipo==='local') o.gl=(+p.gl||0)+1; else o.gv=(+p.gv||0)+1;
   const {error}=await SB.from('partidos').update(o).eq('id',pid);
   if(error) return toast(traducir(error.message),true);
-  if(jid) await sumarStat(pid,jid,{g:1});
-  if(aid) await sumarStat(pid,aid,{a:1});
   await refrescar();
 }
 async function vivoTarjeta(pid,tipo){
@@ -1083,7 +1089,7 @@ function vStats(){
   const rank=(t,k)=>{ const l=con.filter(x=>x.s[k]>0).sort((a,b)=>b.s[k]-a.s[k]).slice(0,10); if(!l.length)return '';
     const max=l[0].s[k];
     return '<div class="card"><h2>'+t+'</h2>'+l.map((x,i)=>'<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span><span class="mut">'+(i+1)+'.</span> <b>'+esc(x.j.nombre)+'</b> <span class="mut">'+esc(catsTxt(x.j))+'</span></span><b>'+x.s[k]+'</b></div><div class="bar"><i style="width:'+(x.s[k]/max*100)+'%"></i></div></div>').join('')+'</div>'; };
-  h+='<div class="grid g2">'+rank('★ Goleadores','g')+rank('◎ Asistencias','a')+rank('⏱ Más minutos','min')+rank('⚠ Más faltas','fal')+'</div>';
+  h+='<div class="grid g2">'+rank('◎ Asistencias','a')+rank('⏱ Más minutos','min')+rank('⚠ Más faltas','fal')+'</div>';
   const arq=con.filter(x=>x.j.pos==='Arquero');
   if(arq.length) h+='<div class="card"><h2>◇ Arqueros</h2><div class="tw"><table><thead><tr><th>Arquero</th><th class="num">PJ</th><th class="num">Goles recibidos</th><th class="num">Vallas invictas</th><th class="num">Promedio</th></tr></thead><tbody>'+
     arq.sort((a,b)=>(a.s.gr/(a.s.pj||1))-(b.s.gr/(b.s.pj||1))).map(x=>'<tr><td><b>'+esc(x.j.nombre)+'</b></td><td class="num">'+x.s.pj+'</td><td class="num">'+x.s.gr+'</td><td class="num" style="color:var(--ok)"><b>'+x.s.vi+'</b></td><td class="num">'+(x.s.gr/(x.s.pj||1)).toFixed(2)+'</td></tr>').join('')+'</tbody></table></div></div>';
