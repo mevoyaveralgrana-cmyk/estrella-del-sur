@@ -519,8 +519,23 @@ function render(){
   root().querySelectorAll('nav a[data-v]').forEach(a=>a.classList.toggle('on',a.dataset.v===V));
   const ns=suspendidos().filter(s=>s.jid).length, na=DB.altas.length;
   bdg('disciplina',ns); bdg('panel',ns); bdg('altas',na);
-  $('main').innerHTML=(vistas[V]||vPanel)();
+  $('main').innerHTML=bannerProximo()+(vistas[V]||vPanel)();
   window.scrollTo(0,0);
+}
+// El próximo partido a jugar (de cualquier categoría), el más cercano en el tiempo.
+// No cuenta el que ya está en vivo (ese ya tiene su propio banner rojo).
+function proximoPartido(){
+  return DB.partidos.filter(p=>!p.jugado&&!p.en_vivo&&p.fecha)
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''))[0]||null;
+}
+function bannerProximo(){
+  const p=proximoPartido(); if(!p) return '';
+  const yo=propio().id, mio=p.local===yo||p.visitante===yo, d=dias(p.fecha);
+  const cuando=d===0?'HOY':d===1?'mañana':d>1?'en '+d+' días':fdate(p.fecha);
+  return '<div class="alert a-inf" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
+    '<span>📅 <b>Próximo partido — '+esc(cat(p.cat).nombre)+'</b> · '+esc(eq(p.local).nombre)+' vs '+esc(eq(p.visitante).nombre)+
+    (mio?'':' <span class="tag t-mut">zona</span>')+' <span class="mut">('+esc(cuando)+(p.hora?' · '+esc(p.hora)+' hs':'')+')</span></span>'+
+    '<button class="sm gh" onclick="F.cat=\''+p.cat+'\';V=\'fixture\';render()">Ver fixture →</button></div>';
 }
 function bdg(v,n){ const e=$('bdg_'+v); if(!e)return; e.style.display=n?'inline-block':'none'; e.textContent=n; }
 function modal(t,h,ancho){ $('modal').innerHTML='<h3>'+t+'<span class="x" onclick="cerrar()">×</span></h3>'+h; $('modal').style.maxWidth=(ancho||620)+'px'; $('mask').classList.add('on'); }
