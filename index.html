@@ -637,7 +637,13 @@ function vFixture(){
   const btn=((esDir()||esDT())?'<button onclick="mPartido()">+ Nuevo partido</button>':'')
     +(esDir()?'<button class="gh" onclick="mFechaCompleta()">+ Cargar fecha completa</button>':'');
   let h=head('Fixture y resultados',esDir()?'Cargá partidos propios y de toda la zona':esDT()?'Podés editar los partidos de tu categoría':'Solo lectura',btn)+barraCat();
-  const ps=partsDe(F.cat).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  // Primero los partidos que faltan jugar, el más próximo arriba de todo.
+  // Debajo, el historial de jugados, del más reciente al más viejo.
+  const ps=partsDe(F.cat).slice().sort((a,b)=>{
+    const ap=!a.jugado, bp=!b.jugado;
+    if(ap!==bp) return ap?-1:1;
+    return ap?(a.fecha||'').localeCompare(b.fecha||''):(b.fecha||'').localeCompare(a.fecha||'');
+  });
   if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
   const yo=propio().id;
   h+='<div class="card"><div class="tw tbl-cards"><table><thead><tr><th>Partido</th><th>Fecha</th><th class="num">Resultado</th><th></th></tr></thead><tbody>';
