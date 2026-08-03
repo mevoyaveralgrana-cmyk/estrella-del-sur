@@ -626,6 +626,31 @@ function vFixture(){
   if(!ps.length) return h+vacio('Sin partidos cargados','Cargá el fixture y también los partidos entre rivales: eso es lo que completa la tabla.');
   const yo=propio().id;
   h+='<div class="card"><div class="tw tbl-cards"><table><thead><tr><th>Partido</th><th>Fecha</th><th class="num">Resultado</th><th></th></tr></thead><tbody>';
+  if(!F.cat){
+    // "Todas las categorías": la misma fecha/rival se repite una vez por categoría.
+    // Se agrupa en una sola fila con una etiqueta clickeable por categoría (abre esa categoría).
+    const grupos={};
+    ps.forEach(p=>{ const k=(p.fecha||'')+'|'+(p.torneo||'')+'|'+(p.fnro||'')+'|'+p.local+'|'+p.visitante; (grupos[k]=grupos[k]||[]).push(p); });
+    Object.values(grupos).forEach(g=>{
+      const p0=g[0], mio=p0.local===yo||p0.visitante===yo;
+      const matchTxt=esc(eq(p0.local).nombre)+(p0.local===yo?' ★':'')+' <span class="mut" style="font-weight:400">vs</span> '+esc(eq(p0.visitante).nombre)+(p0.visitante===yo?' ★':'');
+      const tags=g.slice().sort((a,b)=>(cat(a.cat).orden||0)-(cat(b.cat).orden||0)).map(p=>{
+        const gl=+p.gl||0, gv=+p.gv||0;
+        let cls='t-mut';
+        if(p.en_vivo) cls='t-bad';
+        else if(p.jugado&&mio){ const a=p.local===yo?gl:gv, b=p.local===yo?gv:gl; cls=a>b?'t-ok':a<b?'t-bad':'t-warn'; }
+        const txt=esc(cat(p.cat).nombre)+(p.jugado?' '+gl+'-'+gv:'');
+        return '<span class="tag '+cls+'" style="cursor:pointer" onclick="F.cat=\''+p.cat+'\';render()" title="Ver '+esc(cat(p.cat).nombre)+'">'+(p.en_vivo?'🔴 ':'')+txt+'</span>';
+      }).join(' ');
+      h+='<tr'+(mio?' style="background:rgba(206,20,23,.05)"':'')+'>'+
+        '<td data-label="Partido"><div style="font-weight:700">'+matchTxt+'</div>'+
+          '<div class="mut" style="font-size:11px;margin:2px 0 0">'+esc(p0.torneo||'—')+(p0.fnro?' · fecha '+esc(p0.fnro):'')+' · '+g.length+' categoría'+(g.length>1?'s':'')+'</div></td>'+
+        '<td class="mut" data-label="Fecha" style="white-space:nowrap">'+fdate(p0.fecha)+(p0.hora?'<div style="font-size:11px">'+esc(p0.hora)+' hs</div>':'')+(p0.cancha?'<div style="font-size:11px">'+esc(p0.cancha)+'</div>':'')+'</td>'+
+        '<td data-label="Resultado" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:260px;margin-left:auto">'+tags+'</td>'+
+        '<td class="btns acts"></td></tr>';
+    });
+    return h+'</tbody></table></div></div>';
+  }
   ps.forEach(p=>{
     const mio=p.local===yo||p.visitante===yo, gl=+p.gl||0, gv=+p.gv||0;
     let col='var(--muted)';
